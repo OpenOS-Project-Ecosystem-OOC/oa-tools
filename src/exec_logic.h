@@ -3,7 +3,7 @@
 
 #include "cJSON.h"
 
-// Esegue comandi all'interno della chroot definita nel JSON
-int cmd_chroot_run(cJSON *json);
+// Questa deve corrispondere esattamente al nome usato in main.c
+int action_run(cJSON *json);
 
 #endif
