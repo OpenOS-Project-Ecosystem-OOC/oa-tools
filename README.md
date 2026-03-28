@@ -21,9 +21,9 @@ Vitellus expects `squashfs-tools` and `xorriso` to be available on the host syst
 make
 ```
 
-## 📂 Plan Execution (The "Matrimonio")
+## 📂 Usage
 
-Vitellus can execute complex workflows through a `plan.json`. This allows for a full remastering cycle in one shot:
+Vitellus can execute atomic actions or complex workflows through a `plan.json`. This allows for a full remastering cycle in one shot:
 
 ```json
 {
