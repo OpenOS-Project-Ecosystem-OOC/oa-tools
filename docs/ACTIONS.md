@@ -1,4 +1,4 @@
-# oa: Action Reference Manual
+# 🐧 oa: Action Reference Manual
 
 Every operation in **oa** is driven by a JSON "Plan." This document defines the available actions, their parameters, and their expected behavior on the system.
 
@@ -37,24 +37,23 @@ Every operation in **oa** is driven by a JSON "Plan." This document defines the 
 ---
 
 ## 💀 3. action_skeleton
-**Purpose**: Prepares the bootloader, kernel, initrd for the ISO, purge users and create user live or mantain users.
+**Purpose**: Prepares the boot environment and manages user persistence based on the selected mode.
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
-| `kernel_path` | String | Source path of the kernel (e.g., `/vmlinuz` or `/boot/vmlinuz-linux`). |
+| `kernel_path` | String | Source path of the kernel (e.g., `/vmlinuz`). |
 | `initrd_cmd` | String | Shell template to generate the initrd (e.g., `mkinitramfs -o {{out}} {{ver}}`). |
-| `groups` | Array | Group names array`[cdrom, floppy, sudo, audio, dip, video, plugdev, netdev, autologin]`. |
-| `mode` | String | "", "clone", "crypted"|
+| `groups` | Array | Default groups for the live user. |
+| `mode` | String | Operation mode: `""` (default), `"clone"`, or `"crypted"`. |
 
 **Behavior**:
 1. Copies the kernel image to `iso/live/vmlinuz`.
-2. Detects the kernel version via `uname` or host analysis.
-3. Injects variables (`{{out}}`, `{{ver}}`) into the `initrd_cmd` and executes it.
-4. Populates `iso/isolinux/` with bootloader binaries (`isolinux.bin`, `*.c32`).
-5. Depending on the mode:
-   - "" remove users>=1000, create live user (default mode);
-   - "crypted" remove users>=1000 and encrypt users, create live user,
-   - "clone" users remain unchanged.
+2. Detects the kernel version and executes the `initrd_cmd` (injecting `{{out}}` and `{{ver}}`).
+3. Populates `iso/isolinux/` with bootloader binaries.
+4. **Logic by Mode**:
+   * `""` (Default): Removes all users with UID $\ge 1000$ and creates a fresh live user.
+   * `"crypted"`: Removes users with UID $\ge 1000$, encrypts system users, and creates a live user.
+   * `"clone"`: Keeps all existing users and configurations unchanged.
 
 ---
 
@@ -63,16 +62,18 @@ Every operation in **oa** is driven by a JSON "Plan." This document defines the 
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
-| `compression` | String | Algorithm to use (`zstd`, `xz`, `gzip`). Default: `zstd`. |
-| `compression_level` | Integer | Compression intensity (1-22 for zstd). |
-| `exclude_list` | String | Path to an external file containing exclusion patterns. |
-| `mode` | String | "", "clone", "crypted"|
+| `compression` | String | Algorithm (`zstd`, `xz`, `gzip`). Default: `zstd`. |
+| `compression_level` | Integer | Level (e.g., 1-22 for zstd). |
+| `exclude_list` | String | Path to patterns to exclude from compression. |
+| `mode` | String | `""`, `"clone"`, or `"crypted"`. |
 
 **Behavior**:
-1. Automatically detects available CPU cores for multi-threaded compression.
-2. Applies the `exclude_list`, hardcoded session excludes (e.g., `/proc/*`, `/sys/*`).
-3. Depending on mode, if mode="" add `/home` exclusion.
-4. Generates `iso/live/filesystem.squashfs`.
+1. Detects CPU cores for multi-threaded compression.
+2. Applies the `exclude_list` and hardcoded session excludes (`/proc`, `/sys`, etc.).
+3. **Logic by Mode**:
+   * If `mode == ""`, the `/home` directory is automatically added to the exclusion list.
+   * If `mode == "clone"` or `"crypted"`, the `/home` directory is included (unless specified in `exclude_list`).
+4. Generates the final `iso/live/filesystem.squashfs`.
 
 ---
 
@@ -95,8 +96,8 @@ Every operation in **oa** is driven by a JSON "Plan." This document defines the 
 
 **Behavior**:
 1. Recursively unmounts all bind-mounts and OverlayFS layers.
-2. Uses lazy unmount (`MNT_DETACH`) if resources are busy to ensure host stability.
-3. Deletes temporary directories in the workspace while keeping the final ISO.
+2. Uses **lazy unmount** (`MNT_DETACH`) if resources are busy to ensure host stability.
+3. Deletes temporary workspace directories but preserves the generated ISO.
 
 ---
-*Blueprint for oa v0.1 - Developed by Piero Proietti*
+*Blueprint for oa v0.2 - Developed by Piero Proietti*
