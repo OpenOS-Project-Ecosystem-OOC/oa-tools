@@ -119,10 +119,12 @@ sudo ./oa plan.json
 *Developed with the efficiency of C and the reliability of a Clipper '87 veteran.*
 
 
-# The name oa and other stuffs
+# The name and other stuff
 
 
-The name `oa` is a tribute to the linguistic roots of Zagarolo, my native town. Following the Sack of Rome in 1527, the local population was decimated. To repopulate the area, families were brought in from the North-East.
+The name `oa` is a tribute to the linguistic roots of Zagarolo, my native town. 
+
+Following the Sack of Rome in 1527, the local population was decimated. To repopulate the area, families were brought in from the North-East.
 
 This created a unique linguistic pocket: while Rome's dialect evolved toward a Tuscan style, Zagarolo preserved an "Umbrian-style" dialect. Even today, the kinship with the Terni dialect is striking—sharing the same sounds, cadences, and archaic forms.
 
