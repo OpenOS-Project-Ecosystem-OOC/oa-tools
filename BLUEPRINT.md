@@ -73,4 +73,4 @@ Instead of `oa` guessing where the kernel is, the `plan.json` provides the templ
 4. **Surgical Cleanup**: The `cleanup` action must be resilient. Even if a previous action fails, `cleanup` must ensure no mounts are left "leaking" on the host.
 
 ---
-*Architecture defined by Piero Proietti - 2026*
+*oa architecture is under exploration - 2026*
