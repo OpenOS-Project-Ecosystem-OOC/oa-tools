@@ -6,7 +6,7 @@ LDFLAGS :=
 # --- Directory di Progetto ---
 SRC_DIR := src
 OBJ_DIR := obj
-BIN_NAME := vitellus
+BIN_NAME := oa
 
 # --- Ricerca Sorgenti e Oggetti ---
 # Include cJSON.c se è nella cartella src

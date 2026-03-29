@@ -1,13 +1,15 @@
-# Vitellus 🐧🥚
+# oa 🥚🥚
 
-
-
-**Vitellus** (Latin for *yolk*) is a high-performance core engine written in C, designed for GNU/Linux system remastering. It was born to replace fragile and slow Bash scripting with the precision and power of native Linux kernel syscalls.
-
-
+oa (Zagarolese for eggs) is a high-performance core engine written in C, designed for GNU/Linux system remastering. It replaces fragile and slow Bash scripting with the precision and power of native Linux kernel syscalls.
 
 Designed as a **standalone engine** to power **penguins-eggs** and other remastering tools like **MX-Snapshot** — the real father of penguins-eggs (*) — Vitellus provides a clean, JSON-based interface to manage critical system-level operations.
 
+# The name oa
+The name oa is a tribute to the linguistic roots of Zagarolo. Following the Sack of Rome in 1527, the local population was decimated. To repopulate the area, families were brought in from the North-East.
+
+This created a unique linguistic pocket: while Rome's dialect evolved toward a Tuscan style, Zagarolo preserved an "Umbrian-style" dialect. Even today, the kinship with the Terni dialect is striking—sharing the same sounds, cadences, and archaic forms.
+
+oa is the local word for eggs. It represents the project's evolution: moving from the broad concept of penguins-eggs to a core engine that is as essential, native, and "raw" as its name.
 
 
 ## 🚀 Key Features
