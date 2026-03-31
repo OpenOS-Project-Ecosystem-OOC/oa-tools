@@ -23,8 +23,10 @@
 #include <sys/mount.h>   // <--- FONDAMENTALE PER I MOUNT (MS_BIND, etc.)
 #include <ftw.h>
 
+
 // --- Librerie esterne ---
 #include "cJSON.h"
+#include "oe-yocto.h"
 
 // --- Costanti Globali --
 #define PATH_INPUT PATH_MAX   // 4096 - Per i percorsi che leggiamo
