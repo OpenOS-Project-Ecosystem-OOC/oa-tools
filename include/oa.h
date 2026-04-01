@@ -26,7 +26,7 @@
 
 // --- Librerie esterne ---
 #include "cJSON.h"
-#include "oa-logger.h"
+#include "logger.h"
 #include "oa-yocto.h"
 
 // --- Costanti Globali --

@@ -67,6 +67,7 @@ int action_prepare(OA_Context *ctx) {
         "bin", "sbin", "lib", "lib64", "boot", "opt",
         "root", "srv", "vmlinuz", "initrd.img"
     };
+    
     for (size_t i = 0; i < sizeof(root_entries)/sizeof(char*); i++) {
         char src_path[PATH_SAFE], dst_path[PATH_SAFE];
         snprintf(src_path, sizeof(src_path), "/%s", root_entries[i]);
