@@ -44,16 +44,18 @@ int execute_verb(cJSON *root, cJSON *task) {
 
     // Mappatura comandi
     if (strcmp(cmd_name, "action_prepare") == 0)       status = action_prepare(&ctx);
-    else if (strcmp(cmd_name, "action_users") == 0)    status = action_users(&ctx);
-    else if (strcmp(cmd_name, "action_initrd") == 0)   status = action_initrd(&ctx);
-    else if (strcmp(cmd_name, "action_remaster") == 0) status = action_remaster(&ctx);
-    else if (strcmp(cmd_name, "action_squash") == 0)   status = action_squash(&ctx);
-    else if (strcmp(cmd_name, "action_crypted") == 0)  status = action_crypted(&ctx);
-    else if (strcmp(cmd_name, "action_iso") == 0)      status = action_iso(&ctx);
-    else if (strcmp(cmd_name, "action_pause") == 0)    status = action_pause(&ctx);
     else if (strcmp(cmd_name, "action_cleanup") == 0)  status = action_cleanup(&ctx);
+    else if (strcmp(cmd_name, "action_crypted") == 0)  status = action_crypted(&ctx);
+    else if (strcmp(cmd_name, "action_initrd") == 0)   status = action_initrd(&ctx);
+    else if (strcmp(cmd_name, "action_iso") == 0)      status = action_iso(&ctx);
+    else if (strcmp(cmd_name, "action_isolinux") == 0) status = action_isolinux(&ctx);
+    else if (strcmp(cmd_name, "action_livestruct") == 0) status = action_livestruct(&ctx);
+    else if (strcmp(cmd_name, "action_suspend") == 0)    status = action_suspend(&ctx);
     else if (strcmp(cmd_name, "action_run") == 0)      status = action_run(&ctx);
     else if (strcmp(cmd_name, "action_scan") == 0)     status = action_scan(&ctx);
+    else if (strcmp(cmd_name, "action_squash") == 0)   status = action_squash(&ctx);
+    else if (strcmp(cmd_name, "action_uefi") == 0)     status = action_uefi(&ctx);    
+    else if (strcmp(cmd_name, "action_users") == 0)    status = action_users(&ctx);
     else {
         LOG_ERR("Unknown command requested: %s", cmd_name);
         fprintf(stderr, "{\"error\": \"Unknown command '%s'\"}\n", cmd_name);

@@ -33,8 +33,19 @@
       "command": "action_initrd"
     },
     {
-      "command": "action_remaster"
+      "command": "action_livestruct"
     },
+    {
+      "command": "action_isolinux"
+    },
+    {
+      "command": "action_uefi"
+    },
+    {
+      "command": "action_suspend",
+      "message": "open another terminal to check chroot"
+    },
+    
     {
       "command": "action_squash"
     },
