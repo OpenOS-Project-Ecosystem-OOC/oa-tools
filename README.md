@@ -49,6 +49,12 @@ This will compile both binaries:
 - `./oa/oa` (The Engine)
 - `./coa/coa` (The Orchestrator)
 
+> TIP: You can create symlink
+```
+sudo ln -sf "$(pwd)/oa/oa" /usr/local/bin/oa
+sudo ln -sf "$(pwd)/coa/coa" /usr/local/bin/coa
+```
+
 ---
 
 ## 📜 Philosophy
