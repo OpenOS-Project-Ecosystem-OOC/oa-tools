@@ -12,12 +12,12 @@ import (
 
 const (
 	BootloaderURL  = "https://github.com/pieroproietti/penguins-bootloaders/releases/download/v26.1.16/bootloaders.tar.gz"
-	BootloaderRoot = "/tmp/coa"
+	BootloaderRoot = "/tmp/coa/bootloaders"
 )
 
 // EnsureBootloaders verifica la presenza dei bootloader e li scarica se mancano
 func EnsureBootloaders() (string, error) {
-	targetDir := filepath.Join(BootloaderRoot, "bootloaders")
+	targetDir := BootloaderRoot
 
 	// 1. Controllo se esistono già
 	if _, err := os.Stat(targetDir); err == nil {
@@ -42,7 +42,7 @@ func EnsureBootloaders() (string, error) {
 		return "", err
 	}
 
-	return targetDir, nil
+	return targetDir, nil 
 }
 
 func extractTarGz(r io.Reader, dest string) error {

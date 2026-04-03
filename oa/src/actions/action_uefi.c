@@ -11,7 +11,6 @@ int action_uefi(OA_Context *ctx) {
     if (!pathLiveFs) pathLiveFs = cJSON_GetObjectItemCaseSensitive(ctx->root, "pathLiveFs");
     if (!cJSON_IsString(pathLiveFs)) return 1;
 
-    // Estrazione parametro custom per i bootloaders (opzionale)
     cJSON *bootloaders_path = cJSON_GetObjectItemCaseSensitive(ctx->task, "bootloaders_path");
     if (!bootloaders_path) bootloaders_path = cJSON_GetObjectItemCaseSensitive(ctx->root, "bootloaders_path");
 
@@ -26,16 +25,21 @@ int action_uefi(OA_Context *ctx) {
 
     printf("\033[1;34m[oa UEFI]\033[0m Preparing UEFI boot directories...\n");
 
+    // 1. Logica di selezione della sorgente con Prefisso Unificato 
+    const char *prefix = (cJSON_IsString(bootloaders_path) && strlen(bootloaders_path->valuestring) > 0) 
+                         ? bootloaders_path->valuestring 
+                         : "";
+
     char efi_src[PATH_SAFE] = "";
     char grub_mods_src[PATH_SAFE] = "";
 
-    // 1. Logica di selezione della sorgente
-    if (cJSON_IsString(bootloaders_path) && strlen(bootloaders_path->valuestring) > 0) {
-        snprintf(efi_src, PATH_SAFE, "%s/grubx64.efi", bootloaders_path->valuestring);
-        snprintf(grub_mods_src, PATH_SAFE, "%s/x86_64-efi", bootloaders_path->valuestring);
-        printf("\033[1;34m[oa UEFI]\033[0m Using external bootloaders from: %s\n", bootloaders_path->valuestring);
+    if (prefix[0] != '\0') {
+        // Percorsi basati sulla struttura del tarball (/tmp/coa/bootloaders/)
+        snprintf(efi_src, PATH_SAFE, "%s/grub/grubx64.efi", prefix);
+        snprintf(grub_mods_src, PATH_SAFE, "%s/grub/x86_64-efi", prefix);
+        printf("\033[1;34m[oa UEFI]\033[0m Using external bootloaders from: %s\n", prefix);
     } else {
-        // Fallback standard host Debian
+        // Fallback standard host Debian [cite: 115, 716]
         if (access("/usr/lib/grub/x86_64-efi/monolithic/grubx64.efi", F_OK) == 0) {
             strncpy(efi_src, "/usr/lib/grub/x86_64-efi/monolithic/grubx64.efi", PATH_SAFE);
         } else if (access("/boot/efi/EFI/debian/grubx64.efi", F_OK) == 0) {
@@ -44,26 +48,26 @@ int action_uefi(OA_Context *ctx) {
         strncpy(grub_mods_src, "/usr/lib/grub/x86_64-efi", PATH_SAFE);
     }
 
-    // 2. Copia del payload EFI (bootx64.efi)
-    if (strlen(efi_src) > 0) {
+    // 2. Copia del payload EFI (bootx64.efi) [cite: 719]
+    if (access(efi_src, F_OK) == 0) {
         snprintf(cmd, sizeof(cmd), "cp %s %s/bootx64.efi", efi_src, efi_dir);
         system(cmd);
-        LOG_INFO("Extracted UEFI bootloader from %s", efi_src);
+        LOG_INFO("Extracted UEFI bootloader from %s [cite: 720]", efi_src);
     } else {
-        LOG_WARN("No EFI payload found. UEFI boot might fail.");
+        LOG_WARN("No EFI payload found. UEFI boot might fail. [cite: 720]");
         printf("\033[1;33m[oa UEFI]\033[0m Warning: No EFI payload found.\n");
     }
 
-    // 3. Copia dei moduli GRUB (*.mod, *.lst, ecc.)
+    // 3. Copia dei moduli GRUB (*.mod, *.lst, ecc.) [cite: 115, 721]
     if (access(grub_mods_src, F_OK) == 0) {
         snprintf(cmd, sizeof(cmd), "cp -r %s/* %s/ 2>/dev/null || true", grub_mods_src, grub_dir);
         system(cmd);
-        LOG_INFO("Extracted GRUB modules from %s", grub_mods_src);
+        LOG_INFO("Extracted GRUB modules from %s [cite: 722]", grub_mods_src);
     } else {
-        LOG_WARN("GRUB modules not found at %s", grub_mods_src);
+        LOG_WARN("GRUB modules not found at %s [cite: 722]", grub_mods_src);
     }
 
-    // 4. Generazione automatica di grub.cfg (MENU PRINCIPALE)
+    // 4. Generazione automatica di grub.cfg (MENU PRINCIPALE) [cite: 723]
     char cfg_path[PATH_SAFE];
     snprintf(cfg_path, PATH_SAFE, "%s/grub.cfg", grub_cfg_dir);
 
@@ -84,7 +88,7 @@ int action_uefi(OA_Context *ctx) {
         printf("\033[1;32m[oa UEFI]\033[0m Main grub.cfg generated.\n");
     }
 
-    // 5. Generazione del grub.cfg TRAMPOLINO (nella partizione FAT EFI)
+    // 5. Generazione del grub.cfg TRAMPOLINO [cite: 110, 726]
     char efi_cfg_path[PATH_SAFE];
     snprintf(efi_cfg_path, PATH_SAFE, "%s/grub.cfg", efi_dir);
 

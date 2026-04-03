@@ -23,19 +23,28 @@ int action_isolinux(OA_Context *ctx) {
 
     printf("\033[1;34m[oa ISOLINUX]\033[0m Populating BIOS bootloader binaries...\n");
 
-    // 1. Logica di copia dinamica
-    if (cJSON_IsString(bootloaders_path) && strlen(bootloaders_path->valuestring) > 0) {
-        snprintf(cmd, sizeof(cmd), "cp %s/isolinux.bin %s/ && cp %s/*.c32 %s/ 2>/dev/null || true", 
-                 bootloaders_path->valuestring, isolinux_dir,
-                 bootloaders_path->valuestring, isolinux_dir);
-        printf("\033[1;34m[oa ISOLINUX]\033[0m Using external binaries from: %s\n", bootloaders_path->valuestring);
+    // 1. Logica di copia unificata con prefisso dinamico 
+    const char *prefix = (cJSON_IsString(bootloaders_path) && strlen(bootloaders_path->valuestring) > 0) 
+                         ? bootloaders_path->valuestring 
+                         : "";
+
+    if (prefix[0] != '\0') {
+        // Struttura del tarball in /tmp/coa/bootloaders/
+        snprintf(cmd, sizeof(cmd), 
+                 "cp %s/ISOLINUX/isolinux.bin %s/ && "
+                 "cp %s/syslinux/*.c32 %s/ 2>/dev/null || true", 
+                 prefix, isolinux_dir, prefix, isolinux_dir);
+        printf("\033[1;34m[oa ISOLINUX]\033[0m Using external prefix: %s\n", prefix);
     } else {
-        snprintf(cmd, sizeof(cmd), "cp /usr/lib/ISOLINUX/isolinux.bin %s/ && cp /usr/lib/syslinux/modules/bios/*.c32 %s/", 
+        // Percorso standard Debian [cite: 602]
+        snprintf(cmd, sizeof(cmd), 
+                 "cp /usr/lib/ISOLINUX/isolinux.bin %s/ && "
+                 "cp /usr/lib/syslinux/modules/bios/*.c32 %s/", 
                  isolinux_dir, isolinux_dir);
     }
     system(cmd);
 
-    // 2. Configurazione Isolinux di default
+    // 2. Configurazione Isolinux di default [cite: 230, 603]
     char cfg_path[PATH_SAFE];
     snprintf(cfg_path, PATH_SAFE, "%s/isolinux.cfg", isolinux_dir);
 

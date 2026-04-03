@@ -12,10 +12,8 @@ CONTEXT="CONTEXT_COA_${RAND_SUFFIX}.txt"
 FILES=(
   docs/*.md
   src/*
-  go.mod
-  go.sum
   m
-  coa-contest.sh
+  context-coa.sh
   README.md
 )
 

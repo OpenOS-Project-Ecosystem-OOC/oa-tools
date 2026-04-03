@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 )
 
 // Action rappresenta un singolo blocco "command" nell'array "plan"
@@ -18,10 +17,9 @@ type FlightPlan struct {
 	PathLiveFs      string   `json:"pathLiveFs"`
 	Mode            string   `json:"mode"`
 	InitrdCmd       string   `json:"initrd_cmd"`
-	BootloadersPath string   `json:"bootloaders_path"`
+	BootloadersPath string   `json:"bootloaders_path"` // Questo è il nome corretto 
 	Plan            []Action `json:"plan"`
 }
-
 
 func GeneratePlan(d *Distro, mode string, workPath string) FlightPlan {
 	plan := FlightPlan{
@@ -29,25 +27,28 @@ func GeneratePlan(d *Distro, mode string, workPath string) FlightPlan {
 		Mode:       mode,
 	}
 
-	// Gestione Initrd basata sulla famiglia [cite: 28]
-	// ... (switch d.FamilyID esistente) ...
-
-	// Gestione dinamica dei Bootloader per Arch/Fedora [cite: 28]
-	if d.FamilyID != "debian" {
-		btPath, err := EnsureBootloaders()
-		if err != nil {
-			fmt.Printf("\033[1;31m[coa]\033[0m Errore critico bootloaders: %v\n", err)
-			os.Exit(1)
-		}
-		plan.BootloadersPath = btPath
-	} else {
-		plan.BootloadersPath = "" // Su Debian usa quelli di sistema
+	// 1. Astrazione Initramfs e Bootloaders (Il Terzo Pilastro)
+	switch d.FamilyID {
+	case "debian":
+		plan.InitrdCmd = "mkinitramfs -o {{out}} {{ver}}"
+		plan.BootloadersPath = "" // Su Debian usiamo quelli di sistema
+	case "archlinux":
+		// Su Arch usiamo mkinitcpio
+		plan.InitrdCmd = "mkinitcpio -g {{out}} -k {{ver}}"
+		// Usiamo la costante BootloaderRoot definita in utils.go 
+		plan.BootloadersPath = BootloaderRoot
+	case "fedora", "opensuse":
+		plan.InitrdCmd = "dracut --nomadas --force {{out}} {{ver}}"
+		plan.BootloadersPath = BootloaderRoot
+	default:
+		plan.InitrdCmd = "mkinitramfs -o {{out}} {{ver}}"
+		plan.BootloadersPath = "" // Fallback vuoto
 	}
 
-	// 3. Assemblaggio dinamico della catena di montaggio
+	// 3. Assemblaggio dinamico della catena di montaggio [cite: 28]
 	plan.Plan = []Action{
 		{Command: "action_prepare"},
-		{Command: "action_users"}, // oa sa già come gestirlo in base al "mode"
+		{Command: "action_users"},
 		{Command: "action_initrd"},
 		{Command: "action_livestruct"},
 		{Command: "action_isolinux"},
@@ -55,16 +56,15 @@ func GeneratePlan(d *Distro, mode string, workPath string) FlightPlan {
 		{Command: "action_squash"},
 	}
 
-	// Inserzione modulare: se l'utente vuole l'ISO cifrata, aggiungiamo l'azione in mezzo!
+	// Inserzione modulare per cifratura [cite: 29]
 	if mode == "crypted" {
 		plan.Plan = append(plan.Plan, Action{
 			Command:         "action_crypted",
-			CryptedPassword: "evolution", // Qui potremmo passarla da linea di comando in futuro
+			CryptedPassword: "evolution",
 		})
 	}
 
-	// 4. Generazione ISO e chiusura
-	// Costruiamo un nome file parlante e dinamico!
+	// 4. Generazione ISO e chiusura [cite: 30]
 	isoName := fmt.Sprintf("egg-of_%s-%s-oa_amd64.iso", d.DistroID, d.CodenameID)
 	
 	plan.Plan = append(plan.Plan, Action{

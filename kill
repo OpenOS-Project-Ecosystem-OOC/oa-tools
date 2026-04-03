@@ -1,0 +1,3 @@
+sudo oa ./actions/cleanup.json
+sudo rm /home/eggs -rf
+
