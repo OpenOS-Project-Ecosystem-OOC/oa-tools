@@ -9,6 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
+	"time"
 )
 
 func main() {
@@ -22,8 +25,12 @@ func main() {
 
 	// 2. Gestione dei sotto-comandi (Logica)
 	switch os.Args[1] {
+	case "adapt":
+		handleAdapt()
 	case "produce":
 		handleProduce(os.Args[2:], myDistro)
+	case "export":
+		handleExport(os.Args[2:]) // Nuovo comando
 	case "kill":
 		handleKill()
 	case "detect":
@@ -131,7 +138,7 @@ func handleProduce(args []string, d *Distro) {
 	// 5. Esecuzione del piano di produzione completo
 	fmt.Printf("\033[1;32m[coa]\033[0m Starting production flight...\n")
 	flightPlan := GeneratePlan(d, *mode, *workPath)
-	
+
 	// Rimuoviamo action_prepare dal piano finale per evitare ri-montaggi
 	if len(flightPlan.Plan) > 0 && flightPlan.Plan[0].Command == "action_prepare" {
 		flightPlan.Plan = flightPlan.Plan[1:]
@@ -143,12 +150,28 @@ func handleProduce(args []string, d *Distro) {
 // handleKill gestisce la pulizia (ex eggs kill)
 func handleKill() {
 	fmt.Println("\033[1;33m[coa]\033[0m Freeing the nest...")
+
+	// 1. Eseguiamo il cleanup chirurgico tramite oa (smontaggio)
 	oaPath := getOaPath()
-	cmd := exec.Command("sudo", oaPath, "cleanup") 
+	// Passiamo un JSON minimale o usiamo il comando diretto se implementato
+	cmd := exec.Command("sudo", oaPath, "cleanup")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("\033[1;31m[coa]\033[0m Cleanup failed: %v\n", err)
+		fmt.Printf("\033[1;31m[coa]\033[0m Cleanup (unmount) failed: %v\n", err)
+	}
+
+	// 2. Rimozione fisica della directory /home/eggs (il nest)
+	workPath := "/home/eggs" // Default, o recuperalo dai flag
+	fmt.Printf("\033[1;31m[coa]\033[0m Removing workspace: %s\n", workPath)
+
+	// Usiamo rm -rf con cautela via sudo per pulire i file creati come root
+	rmCmd := exec.Command("sudo", "rm", "-rf", workPath)
+	if err := rmCmd.Run(); err != nil {
+		fmt.Printf("\033[1;31m[coa]\033[0m Physical removal failed: %v\n", err)
+	} else {
+		fmt.Println("\033[1;32m[coa]\033[0m Nest is empty. System clean.")
 	}
 }
 
@@ -187,11 +210,122 @@ func executePlan(plan FlightPlan) {
 	}
 }
 
+/**
+*
+ */
 func printUsage() {
 	fmt.Println("\033[1;32mcoa (Cova) - The Artisan Orchestrator\033[0m")
 	fmt.Println("\nUsage:")
 	fmt.Println("  coa produce [--mode standard|clone|crypted] [--path /path]")
+	fmt.Println("  coa export [--dest /path] [--clean]") //
 	fmt.Println("  coa kill")
+	fmt.Println("  coa adapt")
 	fmt.Println("  coa detect")
 	fmt.Println("  coa version")
+}
+
+// handleAdapt adatta la risoluzione del monitor per le VM
+// handleAdapt adatta la risoluzione del monitor per le VM (silenziosamente)
+func handleAdapt() {
+	fmt.Println("\033[1;33m[coa]\033[0m Adapting monitor resolution...")
+
+	virtualOutputs := []string{"Virtual-0", "Virtual-1", "Virtual-2", "Virtual-3"}
+
+	for _, output := range virtualOutputs {
+		// Eseguiamo il comando senza collegare Stdout/Stderr
+		cmd := exec.Command("xrandr", "--output", output, "--auto")
+
+		// Run() attende la fine del comando.
+		// Non avendo assegnato Stdout/Stderr, il terminale resta pulito.
+		_ = cmd.Run()
+	}
+
+	fmt.Println("\033[1;32m[coa]\033[0m Resolution adapted.")
+}
+
+func handleExport(args []string) {
+	exportCmd := flag.NewFlagSet("export", flag.ExitOnError)
+	clean := exportCmd.Bool("clean", false, "remove previous versions")
+	exportCmd.Parse(args)
+
+	remoteHost := "root@192.168.1.2"
+	remotePath := "/var/lib/vz/template/iso/"
+	srcDir := "/home/eggs"
+
+	// --- 1. SELEZIONE LOCALE: Identifichiamo l'uovo più fresco --- [cite: 29]
+	allFiles, _ := filepath.Glob(filepath.Join(srcDir, "egg-of_*.iso"))
+	if len(allFiles) == 0 {
+		fmt.Println("\033[1;31m[coa]\033[0m Nest is empty.")
+		return
+	}
+
+	latestFiles := make(map[string]string)
+	re := regexp.MustCompile(`_\d{4}-\d{2}-\d{2}_\d{4}\.iso$`)
+
+	for _, path := range allFiles {
+		fileName := filepath.Base(path)
+		prefix := re.ReplaceAllString(fileName, "")
+
+		if info, err := os.Stat(path); err == nil {
+			if current, exists := latestFiles[prefix]; exists {
+				cInfo, _ := os.Stat(current)
+				if info.ModTime().After(cInfo.ModTime()) {
+					latestFiles[prefix] = path
+				}
+			} else {
+				latestFiles[prefix] = path
+			}
+		}
+	}
+
+	// --- 2. MOUNT: Prepariamo il terreno --- [cite: 501, 502]
+	localMount := "/tmp/coa-export-point"
+	exec.Command("sudo", "fusermount", "-uz", localMount).Run()
+	exec.Command("sudo", "rm", "-rf", localMount).Run()
+	os.MkdirAll(localMount, 0755)
+
+	fmt.Printf("\033[1;34m[coa]\033[0m Mounting Proxmox storage (root)...\n")
+	// Importante: allow_other richiede user_allow_other in /etc/fuse.conf
+	mountCmd := exec.Command("sshfs", remoteHost+":"+remotePath, localMount, "-o", "cache=no,allow_other")
+	if out, err := mountCmd.CombinedOutput(); err != nil {
+		fmt.Printf("\033[1;31m[coa]\033[0m Mount failed: %v\n%s\n", err, out)
+		return
+	}
+
+	// Defer per garantire lo smontaggio e il sync finale [cite: 508, 509]
+	defer func() {
+		fmt.Printf("\033[1;34m[coa]\033[0m Finalizing: syncing and unmounting...\n")
+		exec.Command("sync").Run()
+		time.Sleep(1 * time.Second) // Piccolo respiro per FUSE
+		exec.Command("sudo", "fusermount", "-uz", localMount).Run()
+		exec.Command("sudo", "rm", "-rf", localMount).Run()
+	}()
+
+	// --- 3. PULIZIA E COPIA ---
+	for prefix, localPath := range latestFiles {
+		targetFileName := filepath.Base(localPath)
+		fmt.Printf("\033[1;35m[PROCESS]\033[0m Family: %s\n", prefix)
+
+		// CANCELLAZIONE: Scansione del server [cite: 504, 505]
+		if *clean {
+			remoteEntries, _ := os.ReadDir(localMount)
+			for _, entry := range remoteEntries {
+				// CANCELLA solo se inizia con lo stesso prefisso MA ha un nome diverso [cite: 509]
+				if strings.HasPrefix(entry.Name(), prefix) && entry.Name() != targetFileName {
+					fmt.Printf("\033[1;31m[DELETE]\033[0m Removing old version: %s\n", entry.Name())
+					os.Remove(filepath.Join(localMount, entry.Name()))
+				}
+			}
+		}
+
+		// COPIA: Invio fisico del file [cite: 14, 570]
+		dstPath := filepath.Join(localMount, targetFileName)
+		fmt.Printf("\033[1;32m[COPY]\033[0m Sending %s to Proxmox...\n", targetFileName)
+
+		if err := copyFile(localPath, dstPath); err != nil {
+			fmt.Printf("\033[1;31m[ERROR]\033[0m Copy failed: %v\n", err)
+		} else {
+			fmt.Printf("\033[1;32m[SUCCESS]\033[0m %s is now on Proxmox.\n", targetFileName)
+		}
+	}
 }
