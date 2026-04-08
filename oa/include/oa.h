@@ -64,7 +64,7 @@ typedef struct {
 #include "hatch_unpack.h"
 #include "hatch_fstab.h"
 #include "hatch_users.h"
-// #include "hatch_uefi.h"  <-- Questo decommentalo appena lo creiamo
+#include "hatch_uefi.h"
 
 // SYS (Utility Generiche)
 #include "sys_run.h"

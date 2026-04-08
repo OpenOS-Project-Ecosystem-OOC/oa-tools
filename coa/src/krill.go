@@ -162,7 +162,7 @@ func generateInstallPlan(ans *KrillAnswers, disk string) {
 		Mode:       "install",
 		Plan: []Action{
 			{
-				Command:    "action_partition",
+				Command:    "hatch_partition", // <-- AGGIORNATO
 				RunCommand: disk,
 			},
 		},
@@ -170,32 +170,33 @@ func generateInstallPlan(ans *KrillAnswers, disk string) {
 
 	if ans.UseLuks {
 		plan.Plan = append(plan.Plan, Action{
-			Command:         "action_format_luks",
+			Command:         "hatch_format_luks", 
 			RunCommand:      disk,
 			CryptedPassword: ans.Password,
 		})
 	} else {
 		plan.Plan = append(plan.Plan, Action{
-			Command:    "action_format_ext4",
+			Command:    "hatch_format", // <-- AGGIORNATO
 			RunCommand: disk,
 		})
 	}
 
+	// Il cuore della schiusa: spacchettiamo, fstab, setup sistema e bootloader
 	plan.Plan = append(plan.Plan,
-		Action{Command: "action_unpack", RunCommand: disk},
-		Action{Command: "action_fstab", RunCommand: disk},
+		Action{Command: "hatch_unpack", RunCommand: disk}, // <-- AGGIORNATO
+		Action{Command: "hatch_fstab", RunCommand: disk},  // <-- AGGIORNATO
 		Action{
-			Command:    "action_run",
+			Command:    "sys_run", // <-- AGGIORNATO (ex action_run)
 			RunCommand: "systemd-machine-id-setup",
 		},
 		Action{
-			Command:    "action_run",
+			Command:    "sys_run", // <-- AGGIORNATO
 			RunCommand: "hostnamectl",
 			Args:       []string{"set-hostname", ans.Hostname},
 		},
-		Action{Command: "action_users"},
-		Action{Command: "action_initrd"},
-		Action{Command: "action_uefi"},
+		Action{Command: "hatch_users"}, // <-- AGGIORNATO
+		Action{Command: "lay_initrd"},  // <-- AGGIORNATO (l'initrd condivide la logica della ISO)
+		Action{Command: "hatch_uefi", RunCommand: disk}, // <-- AGGIORNATO E CON DISCO FISICO!
 	)
 
 	plan.Users = []UserConfig{
@@ -209,7 +210,6 @@ func generateInstallPlan(ans *KrillAnswers, disk string) {
 		},
 	}
 
-	// Queste sono le righe che mancavano nel tuo copia-incolla!
 	jsonData, err := json.MarshalIndent(plan, "", "  ")
 	if err != nil {
 		fmt.Printf("\033[1;31m[ERROR]\033[0m Failed to marshal JSON: %v\n", err)
