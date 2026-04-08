@@ -190,11 +190,10 @@ func generateInstallPlan(ans *KrillAnswers, disk string) {
 			RunCommand: "systemd-machine-id-setup",
 		},
 		Action{
-			Command:    "sys_run", // <-- AGGIORNATO
-			RunCommand: "hostnamectl",
-			Args:       []string{"set-hostname", ans.Hostname},
-		},
-		Action{Command: "hatch_users"}, // <-- AGGIORNATO
+			Command:    "sys_run",
+			RunCommand: "sh",
+			Args:       []string{"-c", "echo " + ans.Hostname + " > /etc/hostname"},
+		},		Action{Command: "hatch_users"}, // <-- AGGIORNATO
 		Action{Command: "lay_initrd"},  // <-- AGGIORNATO (l'initrd condivide la logica della ISO)
 		Action{Command: "hatch_uefi", RunCommand: disk}, // <-- AGGIORNATO E CON DISCO FISICO!
 	)
