@@ -43,8 +43,8 @@ int hatch_fstab(OA_Context *ctx) {
     get_uuid(root_part, root_uuid, sizeof(root_uuid));
 
     char fstab_path[PATH_SAFE];
-    // In modalità installazione, pathLiveFs è la radice esatta (/mnt/krill-target)
-    snprintf(fstab_path, sizeof(fstab_path), "%s/etc/fstab", pathLiveFs->valuestring);
+    // In modalità installazione, pathLiveFs è la radice esatta (/mnt/krill)
+    snprintf(fstab_path, sizeof(fstab_path), "%s/liveroot/etc/fstab", pathLiveFs->valuestring);
 
     FILE *f = fopen(fstab_path, "w");
     if (!f) {

@@ -21,7 +21,9 @@ int hatch_uefi(OA_Context *ctx) {
         return 1;
     }
 
-    const char *target_root = pathLiveFs->valuestring;
+    char target_root[PATH_SAFE];
+    snprintf(target_root, sizeof(target_root), "%s/liveroot", pathLiveFs->valuestring);
+
     const char *disk = disk_node->valuestring;
     char cmd[CMD_MAX];
     int res = 0;
