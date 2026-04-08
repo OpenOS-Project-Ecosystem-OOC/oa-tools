@@ -1,9 +1,21 @@
 > [!CAUTION]
 > # STOP ALL WARS
-> **"Cessate d'uccidere i morti" — Stop killing the dead.**
+> ### Non gridate più
 >
-> You cannot destroy millennial civilizations like Persia and Lebanon, or sovereign nations like Ukraine, in the name of a movement that is little more than a century old and rooted in racism. 
-> **STOP THE MASSACRE.**
+> Cessate d'uccidere i morti,  
+> Non gridate più, non gridate  
+> Se li volete ancora udire,  
+> Se sperate di non perire.  
+> 
+> Hanno l'impercettibile sussurro,  
+> Non fanno più rumore  
+> Del crescere dell'erba,  
+> Lieta dove non passa l'uomo.
+>
+> — *Giuseppe Ungaretti*
+>
+> ---
+> **You cannot destroy millennial civilizations like Persia and Lebanon, or sovereign nations like Ukraine, in the name of a movement that is little more than a century old and rooted in racism. STOP THE MASSACRE.**
 
 
 # oa-tools - The Next Generation Remastering Suite 🐧
