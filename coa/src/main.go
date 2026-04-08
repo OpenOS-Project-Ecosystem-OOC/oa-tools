@@ -105,8 +105,17 @@ func main() {
 		},
 	}
 
-	// Assemblaggio dei comandi
-	rootCmd.AddCommand(produceCmd, exportCmd, killCmd, detectCmd, adaptCmd, versionCmd, docsCmd, krillCmd)
+	// --- BUILD COMMAND ---
+	var buildCmd = &cobra.Command{
+		Use:   "build",
+		Short: "Compile binaries and generate native distribution packages (.deb, PKGBUILD)",
+		Run: func(cmd *cobra.Command, args []string) {
+			handleBuild(myDistro)
+		},
+	}
+
+    // Assicurati di aggiungere buildCmd alla riga rootCmd.AddCommand in fondo al file:
+	rootCmd.AddCommand(produceCmd, exportCmd, killCmd, detectCmd, adaptCmd, versionCmd, docsCmd, krillCmd, buildCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
