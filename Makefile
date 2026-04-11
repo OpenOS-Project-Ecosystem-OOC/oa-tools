@@ -3,7 +3,8 @@
 # 1. THE SINGLE SOURCE OF TRUTH
 # Legge la versione dinamicamente dal file di testo dell'orchestratore Go.
 # Se il file è assente, usa la versione di sviluppo in modo sicuro.
-VERSION := $(shell cat coa/src/VERSION 2>/dev/null || echo "0.0.0-dev")
+#VERSION := $(shell cat coa/src/VERSION 2>/dev/null || echo "0.0.0-dev")
+VERSION := $(shell git describe --tags --always 2>/dev/null || cat coa/src/VERSION 2>/dev/null || echo "0.0.0-dev")
 
 # Directories
 OA_DIR = oa
@@ -26,9 +27,12 @@ build_oa:
 	@$(MAKE) -C $(OA_DIR) VERSION="$(VERSION)"
 
 build_coa:
-	@echo "  MAKING coa..."
-	@cd $(COA_DIR) && go build -o coa ./src
-
+	@echo "  MAKING coa (Version: $(VERSION))..."
+	@cd $(COA_DIR) && go build -ldflags "-X 'coa/src/cmd.AppVersion=$(VERSION)'" -o coa ./src
+	@echo "  GENERATING DOCUMENTATION..."
+	@# Usiamo COA_DIR (che è 'coa') per dire al binario dove scrivere
+	@./$(COA_BIN) man --target ./$(COA_DIR)/docs
+	
 clean:
 	@echo "  Pulizia in corso..."
 	@$(MAKE) -C $(OA_DIR) clean
