@@ -88,6 +88,7 @@ func HandleExportIso(clean bool) {
 }
 
 // HandleExportPkg esporta i pacchetti nativi (DEB o Arch)
+// HandleExportPkg esporta i pacchetti nativi (DEB o Arch)
 func HandleExportPkg(clean bool) {
 	fmt.Println("\033[1;34m[PROCESS]\033[0m Searching for native packages...")
 
@@ -108,17 +109,45 @@ func HandleExportPkg(clean bool) {
 	})
 	latestPkg := allPackages[len(allPackages)-1]
 
+	// --- INIZIO SETUP SSH MULTIPLEXING ---
+	socketPath := "/tmp/coa-ssh-mux-pkg"
+	muxArgs := []string{
+		"-o", "ControlMaster=auto",
+		"-o", "ControlPath=" + socketPath,
+		"-o", "ControlPersist=2m",
+	}
+
+	// Chiude la connessione master alla fine della funzione
+	defer func() {
+		exec.Command("ssh", "-O", "exit", "-o", "ControlPath="+socketPath, remoteUserHost).Run()
+		os.Remove(socketPath)
+	}()
+	// --- FINE SETUP ---
+
 	if clean {
 		fmt.Printf("\033[1;33m[CLEAN]\033[0m Removing old packages on %s...\n", remoteUserHost)
-		cleanCmd := exec.Command("ssh", remoteUserHost, "rm -f "+remotePkgPath+"*.deb "+remotePkgPath+"*.pkg.tar.zst")
-		cleanCmd.Stdout, cleanCmd.Stderr = os.Stdout, os.Stderr
-		cleanCmd.Run()
-		fmt.Println("\033[1;32m[CLEAN]\033[0m Old packages removed.")
+		cleanCmdStr := "rm -f " + remotePkgPath + "*.deb " + remotePkgPath + "*.pkg.tar.zst"
+		sshArgs := append(muxArgs, remoteUserHost, cleanCmdStr)
+
+		cleanCmd := exec.Command("ssh", sshArgs...)
+		// È fondamentale passare lo Stdin affinché il prompt della password sia visibile se clean=true
+		cleanCmd.Stdout, cleanCmd.Stderr, cleanCmd.Stdin = os.Stdout, os.Stderr, os.Stdin
+
+		if err := cleanCmd.Run(); err != nil {
+			fmt.Printf("\033[1;31m[ERROR]\033[0m Remote cleanup failed: %v\n", err)
+		} else {
+			fmt.Println("\033[1;32m[CLEAN]\033[0m Old packages removed.")
+		}
 	}
 
 	fmt.Printf("\033[1;34m[COPY]\033[0m Sending \033[1m%s\033[0m to Proxmox...\n", latestPkg)
-	scpCmd := exec.Command("scp", latestPkg, remoteUserHost+":"+remotePkgPath)
-	scpCmd.Stdout, scpCmd.Stderr = os.Stdout, os.Stderr
+
+	dstStr := fmt.Sprintf("%s:%s", remoteUserHost, remotePkgPath)
+	scpArgs := append(muxArgs, latestPkg, dstStr)
+
+	scpCmd := exec.Command("scp", scpArgs...)
+	// Passiamo lo Stdin: se clean=false, sarà questo comando a chiedere la password per primo
+	scpCmd.Stdout, scpCmd.Stderr, scpCmd.Stdin = os.Stdout, os.Stderr, os.Stdin
 
 	if err := scpCmd.Run(); err != nil {
 		fmt.Printf("\033[1;31m[ERROR]\033[0m SCP transfer failed: %v\n", err)
