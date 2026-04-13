@@ -265,6 +265,7 @@ arch=('x86_64')
 license=('GPL3')
 depends=('archiso' 'xorriso' 'squashfs-tools')
 conflicts=('penguins-eggs')
+options=(!debug)
 
 package() {
     install -Dm755 "${startdir}/oa/oa" "${pkgdir}/usr/local/bin/oa"

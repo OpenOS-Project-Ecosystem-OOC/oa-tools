@@ -115,10 +115,8 @@ func GeneratePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 	case "debian":
 		plan.InitrdCmd = "mkinitramfs -o {{out}} {{ver}}"
 	case "archlinux":
-		// Interno a chroot
-		plan.InitrdCmd = fmt.Sprintf("mkinitcpio -c %s/liveroot/etc/mkinitcpio.conf -g {{out}} -k {{ver}}", workPath)
+		plan.InitrdCmd = "mkinitcpio -c /etc/mkinitcpio.conf -g {{out}} -k {{ver}}"
 	case "fedora", "rhel", "centos", "rocky", "almalinux":
-		// Interno a chroot
 		plan.InitrdCmd = "dracut --no-hostonly --nomdadmconf --nolvmconf --xz --add dmsquash-live --add rootfs-block --add bash --force {{out}} {{ver}}"
 	default:
 		plan.InitrdCmd = "mkinitramfs -o {{out}} {{ver}}"
@@ -152,13 +150,13 @@ func GeneratePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 
 	// Task specifici per Fedora/RHEL
 	if d.FamilyID == "fedora" || d.FamilyID == "rhel" || d.FamilyID == "centos" || d.FamilyID == "rocky" || d.FamilyID == "almalinux" {
-		
+
 		targetConfDir := fmt.Sprintf("%s/liveroot/etc/dracut.conf.d", workPath)
-		targetConfPath := fmt.Sprintf("%s/coa.conf", targetConfDir) 
+		targetConfPath := fmt.Sprintf("%s/coa.conf", targetConfDir)
 
 		// Prepariamo il testo del file formattato per il comando echo -e
 		dracutConfig := `hostonly="no"\nadd_dracutmodules+=" dmsquash-live rootfs-block bash "\ncompress="xz"`
-		
+
 		// Costruiamo il comando shell che scrive direttamente il file
 		writeCmd := fmt.Sprintf(`echo -e '%s' > %s`, dracutConfig, targetConfPath)
 

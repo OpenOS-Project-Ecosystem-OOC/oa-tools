@@ -80,6 +80,11 @@ int lay_initrd(OA_Context *ctx) {
     snprintf(chroot_cmd, 4096, "chroot %s /bin/bash -c \"%s\"", liveroot_dir, final_cmd);
 
     printf("\033[1;34m[oa]\033[0m Executing inside chroot: %s\n", final_cmd);
+    // /tmp DEVE ESISTERE ed essere SCRIVIVBILE in chroot
+    char fix_tmp_cmd[PATH_SAFE];
+    snprintf(fix_tmp_cmd, PATH_SAFE, "mkdir -p %s/tmp && chmod 1777 %s/tmp", liveroot_dir, liveroot_dir);
+    system(fix_tmp_cmd);
+
     
     // Assicuriamoci che la cartella di destinazione su host esista
     char mkdir_cmd[PATH_SAFE];
