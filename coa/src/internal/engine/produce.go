@@ -104,11 +104,10 @@ func bridgeConfigs(d *distro.Distro, workPath string) error {
 	if d.DistroID == "manjaro" || d.DistroID == "biglinux" {
 		presetName = fmt.Sprintf("live-%s.conf", d.DistroID)
 	}
-
 	src := fmt.Sprintf("/tmp/coa/configs/mkinitcpio/%s", presetName)
-	dst := filepath.Join(workPath, "liveroot", "etc", "mkinitcpio.conf")
+	dst := filepath.Join(workPath, "liveroot", "etc", "coa_mkinitcpio.conf")
 
-	fmt.Printf("\033[1;34m[coa]\033[0m Overwriting liveroot /etc/mkinitcpio.conf with %s...\n", presetName)
+	fmt.Printf("\033[1;34m[coa]\033[0m Creating liveroot /etc/mkinitcpio.conf with %s...\n", presetName)
 
 	if err := copyFile(src, dst); err != nil {
 		return err

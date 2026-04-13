@@ -115,14 +115,16 @@ func GeneratePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 	case "debian":
 		plan.InitrdCmd = "mkinitramfs -o {{out}} {{ver}}"
 	case "archlinux":
-		plan.InitrdCmd = "mkinitcpio -c /etc/mkinitcpio.conf -g {{out}} -k {{ver}}"
+		// MODIFICA 1: Usa il file custom per Arch
+		plan.InitrdCmd = "mkinitcpio -c /etc/coa_mkinitcpio.conf -g {{out}} -k {{ver}}"
 	case "fedora", "rhel", "centos", "rocky", "almalinux":
-		plan.InitrdCmd = "dracut --no-hostonly --nomdadmconf --nolvmconf --xz --add dmsquash-live --add rootfs-block --add bash --force {{out}} {{ver}}"
+		// MODIFICA 2: Ripristinati i driver essenziali per Fedora
+		plan.InitrdCmd = "dracut --no-hostonly --nomdadmconf --nolvmconf --xz --add dmsquash-live --add rootfs-block --add bash --add-drivers \"overlay squashfs loop iso9660 cdrom sr_mod\" --force {{out}} {{ver}}"
 	default:
 		plan.InitrdCmd = "mkinitramfs -o {{out}} {{ver}}"
 	}
 
-	// 2. Configurazione Utenti (Globale)
+	// 2. Configurazione Utenti (Globale) e Inizializzazione Piano
 	if mode == "standard" {
 		adminGroup := "sudo"
 		if d.FamilyID == "archlinux" || d.FamilyID == "fedora" || d.FamilyID == "rhel" || d.FamilyID == "centos" || d.FamilyID == "rocky" || d.FamilyID == "almalinux" {
@@ -139,13 +141,30 @@ func GeneratePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 				Groups:   []string{"cdrom", "audio", "video", "plugdev", "netdev", "autologin", adminGroup},
 			},
 		}
+
+		// MODIFICA 3: Inizializziamo subito l'array del piano
+		plan.Plan = []Action{
+			{Command: "lay_users"},
+		}
+
+		// Aggiungiamo i permessi Sudoers
+		sudoersDir := "/etc/sudoers.d"
+		sudoersFile := "/etc/sudoers.d/00-oa-live"
+		sudoersContent := fmt.Sprintf("%%%s ALL=(ALL) NOPASSWD: ALL", adminGroup)
+		sudoersCmd := fmt.Sprintf("mkdir -p %s && echo '%s' > %s && chmod 0440 %s", sudoersDir, sudoersContent, sudoersFile, sudoersFile)
+
+		plan.Plan = append(plan.Plan, Action{
+			Command:    "sys_run",
+			RunCommand: "sh",
+			Args:       []string{"-c", sudoersCmd},
+		})
+
 	} else {
 		plan.Users = []UserConfig{}
-	}
-
-	// 3. Assemblaggio dinamico del piano
-	plan.Plan = []Action{
-		{Command: "lay_users"},
+		// Se non siamo in standard, inizializziamo comunque il piano
+		plan.Plan = []Action{
+			{Command: "lay_users"},
+		}
 	}
 
 	// Task specifici per Fedora/RHEL
@@ -167,7 +186,7 @@ func GeneratePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 			Args:       []string{"-p", targetConfDir},
 		})
 
-		// 2. Scriviamo il file a destinazione usando sh -c (nessun file temporaneo perso nei mount!)
+		// 2. Scriviamo il file a destinazione usando sh -c
 		plan.Plan = append(plan.Plan, Action{
 			Command:    "sys_run",
 			RunCommand: "sh",
