@@ -6,9 +6,15 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+type RemasterConfig struct {
+	BootParams string            `json:"boot_params"`
+	IsoLinks   map[string]string `json:"iso_links,omitempty"`
+}
+
 type InitrdTask struct {
 	Command    string
 	SetupFiles map[string]string
+	Remaster   RemasterConfig
 }
 
 func findBrainPath() string {
@@ -28,16 +34,23 @@ func findBrainPath() string {
 }
 
 func GetInitrdTask(family string) *InitrdTask {
-	data, err := os.ReadFile(findBrainPath())
+	path := findBrainPath()
+	if path == "" {
+		return nil
+	}
+
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
 	}
 
+	// Struttura completa per mappare il Cervello
 	var brain struct {
 		Families map[string]struct {
 			Initrd struct {
 				Live interface{} `json:"live"`
 			} `json:"initrd"`
+			Remaster RemasterConfig `json:"remaster"`
 		} `json:"families"`
 	}
 
@@ -50,9 +63,12 @@ func GetInitrdTask(family string) *InitrdTask {
 		return nil
 	}
 
-	task := &InitrdTask{SetupFiles: make(map[string]string)}
+	task := &InitrdTask{
+		SetupFiles: make(map[string]string),
+		Remaster:   f.Remaster, // Popoliamo boot_params e iso_links
+	}
 
-	// Gestione flessibile: comando stringa o mappa complessa
+	// Gestione flessibile Initrd: comando stringa o mappa complessa
 	if cmd, ok := f.Initrd.Live.(string); ok {
 		task.Command = cmd
 		return task
