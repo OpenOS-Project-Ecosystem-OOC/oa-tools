@@ -120,25 +120,33 @@ func generateInstallPlan(ans *KrillAnswers, disk string, d *distro.Distro) {
 
 	// 1. Inizializzazione del Piano di Volo
 	plan := FlightPlan{
-		PathLiveFs: "/mnt/krill-target", // Area di mount per l'installazione
+		PathLiveFs: "/mnt/krill-target",
 		Mode:       "install",
 		Plan:       []Action{},
 	}
 
 	// 2. PREPARAZIONE DISCO E FILESYSTEM
+	plan.Plan = append(plan.Plan, Action{Command: "oa_install_partition", RunCommand: disk})
+
+	// FIX PER FEDORA 43: Formattazione EXT4 con flag di compatibilità per GRUB
+	if d.FamilyID == "fedora" || d.FamilyID == "rhel" {
+		plan.Plan = append(plan.Plan, Action{
+			Command:    "oa_sys_shell",
+			RunCommand: fmt.Sprintf("mkfs.fat -F32 %s2 && mkfs.ext4 -O ^metadata_csum_seed,^orphan_file %s3", disk, disk),
+		})
+	} else {
+		plan.Plan = append(plan.Plan, Action{Command: "oa_install_format", RunCommand: disk})
+	}
+
 	plan.Plan = append(plan.Plan,
-		Action{Command: "oa_install_partition", RunCommand: disk},                          //
-		Action{Command: "oa_install_format", RunCommand: disk},                             //
-		Action{Command: "oa_install_unpack", RunCommand: disk, Args: []string{squashPath}}, //
-		// Prepariamo l'ambiente chroot sul disco fisico
+		Action{Command: "oa_install_unpack", RunCommand: disk, Args: []string{squashPath}},
 		Action{Command: "oa_install_prepare", RunCommand: disk},
 	)
 
-	// 3. LOGICA DISTRO-SPECIFICA (The Mind) [cite: 3, 79]
+	// 3. LOGICA DISTRO-SPECIFICA (The Mind)
 	var shellInitrdCmd string
 	var shellGrubCmd string
 
-	// Determiniamo i comandi in base alla famiglia della distribuzione
 	switch d.FamilyID {
 	case "archlinux":
 		shellInitrdCmd = "mkinitcpio -P"
@@ -149,7 +157,17 @@ func generateInstallPlan(ans *KrillAnswers, disk string, d *distro.Distro) {
 		}
 	case "fedora", "rhel", "centos", "rocky", "almalinux":
 		shellInitrdCmd = "dracut --force --regenerate-all"
-		shellGrubCmd = "grub2-mkconfig -o /boot/grub2/grub.cfg"
+		// FIX PER FEDORA: Disabilitazione BLS e installazione fisica GRUB
+		if isUEFI() {
+			shellGrubCmd = "echo 'GRUB_ENABLE_BLSCFG=false' >> /etc/default/grub && " +
+				"grub2-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=fedora --recheck && " +
+				"grub2-mkconfig -o /boot/grub2/grub.cfg && " +
+				"cp /boot/grub2/grub.cfg /boot/efi/EFI/fedora/grub.cfg"
+		} else {
+			shellGrubCmd = "echo 'GRUB_ENABLE_BLSCFG=false' >> /etc/default/grub && " +
+				"grub2-install --target=i386-pc --recheck " + disk + " && " +
+				"grub2-mkconfig -o /boot/grub2/grub.cfg"
+		}
 	default: // Debian/Ubuntu
 		shellInitrdCmd = "update-initramfs -u -k all"
 		if isUEFI() {
@@ -161,44 +179,40 @@ func generateInstallPlan(ans *KrillAnswers, disk string, d *distro.Distro) {
 
 	// 4. ESECUZIONE AZIONI UNIVERSALI E CHROOT
 	plan.Plan = append(plan.Plan,
-		Action{Command: "oa_install_fstab", RunCommand: disk}, // [cite: 95]
-
-		// Configurazione Hostname e Machine-ID via Shell [cite: 95, 96]
+		Action{Command: "oa_install_fstab", RunCommand: disk},
 		Action{
 			Command:    "oa_sys_shell",
 			RunCommand: fmt.Sprintf("echo %s > /etc/hostname && systemd-machine-id-setup", ans.Hostname),
 			Chroot:     true,
 		},
-
-		// Generazione Initrd via Shell
 		Action{
 			Command:    "oa_sys_shell",
 			RunCommand: shellInitrdCmd,
 			Chroot:     true,
 		},
-
-		// Installazione Bootloader via Shell
 		Action{
 			Command:    "oa_sys_shell",
 			RunCommand: shellGrubCmd,
 			Chroot:     true,
 		},
-
-		// Iniezione identità utenti (Manteniamo l'azione nativa per sicurezza) [cite: 95, 97]
 		Action{Command: "oa_install_users"},
+	)
 
-		// Pulizia residui sessione live
-		Action{
+	// 5. PULIZIA SELETTIVA E SYNC (FIX PER HANG SU FEDORA)
+	if d.FamilyID == "debian" {
+		plan.Plan = append(plan.Plan, Action{
 			Command:    "oa_sys_shell",
 			RunCommand: "rm -rf /var/log/installer /var/lib/live/config /etc/sudoers.d/live-user 2>/dev/null",
 			Chroot:     true,
-		},
+		})
+	}
 
-		// Unmount e pulizia finale
+	plan.Plan = append(plan.Plan,
+		Action{Command: "oa_sys_shell", RunCommand: "sync"},
 		Action{Command: "oa_install_cleanup"},
 	)
 
-	// 5. Configurazione Utente Primario [cite: 97]
+	// 6. Configurazione Utente Primario
 	plan.Users = []UserConfig{
 		{
 			Login:    ans.Username,
@@ -210,13 +224,11 @@ func generateInstallPlan(ans *KrillAnswers, disk string, d *distro.Distro) {
 		},
 	}
 
-	// 6. Salvataggio ed Esecuzione
+	// 7. Salvataggio ed Esecuzione
 	jsonData, _ := json.MarshalIndent(plan, "", "  ")
 	outPath := "/tmp/sysinstall.json"
 	os.WriteFile(outPath, jsonData, 0644)
 
 	fmt.Printf("\033[1;32m[SUCCESS]\033[0m Flight plan ready at %s\n", outPath)
-
-	// Esecuzione tramite l'engine centrale (oa) [cite: 86]
 	ExecutePlan(plan)
 }
