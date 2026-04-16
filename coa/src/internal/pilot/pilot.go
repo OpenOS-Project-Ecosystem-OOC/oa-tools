@@ -197,7 +197,7 @@ func GenerateBootConfig(familyID string, task *InitrdTask) error {
 	label := "OA_LIVE" // Potrebbe essere dinamico in futuro
 	params := task.Remaster.BootParams
 
-	// Definiamo i percorsi del kernel/initrd
+	// percorsi di kernel/initrd
 	kernelPath := "/live/vmlinuz"
 	initrdPath := "/live/initrd.img"
 
