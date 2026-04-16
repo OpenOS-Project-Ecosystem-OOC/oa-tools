@@ -31,7 +31,7 @@ build_coa:
 	@echo "  MAKING coa (Version: $(VERSION))..."
 	@cd $(COA_DIR) && go build -ldflags "-X 'coa/src/cmd.AppVersion=$(VERSION)'" -o coa ./src
 	@echo "  GENERATING DOCUMENTATION..."
-	@./$(COA_BIN) _gen_docs --target ./$(COA_DIR)/docs
+	@./$(COA_BIN) _gen_docs --target ./$(COA_DIR)/docs 
 	
 clean:
 	@echo "  Pulizia binari e piani di volo..."

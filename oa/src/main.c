@@ -27,6 +27,8 @@ char *read_file(const char *filename) {
 /* oa/src/main.c */
 int execute_verb(cJSON *root, cJSON *task) {
     cJSON *command = cJSON_GetObjectItemCaseSensitive(task, "command");
+    cJSON *info = cJSON_GetObjectItemCaseSensitive(task, "info");
+
     if (!cJSON_IsString(command) || (command->valuestring == NULL)) {
         LOG_ERR("Task without a valid 'command' field found.");
         return 1;
@@ -34,9 +36,13 @@ int execute_verb(cJSON *root, cJSON *task) {
 
     const char *cmd_name = command->valuestring;
     OA_Context ctx = { .root = root, .task = task };
+    
+if (cJSON_IsString(info) && info->valuestring != NULL) {
+        // Se coa ha inviato una descrizione "umana", usala
+        printf("[oa][%s\n", info->valuestring);
+    }
 
     LOG_INFO(">>> dispatching to: %s", cmd_name);
-    printf("\033[1;34m[oa]\033[0m Executing action '%s'...\n", cmd_name);
     int status = 1;
 
     // --- FASE 1: REMASTER (Ex LAY) ---

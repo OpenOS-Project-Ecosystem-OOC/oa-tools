@@ -62,6 +62,7 @@ func GeneratePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 		sudoersCmd := fmt.Sprintf("mkdir -p /etc/sudoers.d && echo '%%%s ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/00-oa-live && chmod 0440 /etc/sudoers.d/00-oa-live", adminGroup)
 		plan.Plan = append(plan.Plan, Action{
 			Command:    "oa_sys_shell",
+			Info:       "Applying passwordless sudo configuration",
 			RunCommand: sudoersCmd,
 			Chroot:     true,
 		})
@@ -77,6 +78,7 @@ func GeneratePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 			writeCmd := fmt.Sprintf("mkdir -p $(dirname %s) && echo -e '%s' > %s", path, content, path)
 			plan.Plan = append(plan.Plan, Action{
 				Command:    "oa_sys_shell",
+				Info:       fmt.Sprintf("Injecting configuration: %s", path),
 				RunCommand: writeCmd,
 				Chroot:     true,
 			})
@@ -86,6 +88,7 @@ func GeneratePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 		if task.Command != "" {
 			plan.Plan = append(plan.Plan, Action{
 				Command:    "oa_sys_shell",
+				Info:       "Regenerating Initramfs for live system",
 				RunCommand: task.Command,
 				Chroot:     true,
 			})
@@ -95,6 +98,7 @@ func GeneratePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 		for path := range task.SetupFiles {
 			plan.Plan = append(plan.Plan, Action{
 				Command:    "oa_sys_shell",
+				Info:       "Cleaning up temporary config files",
 				RunCommand: fmt.Sprintf("rm -f %s", path),
 				Chroot:     true,
 			})
@@ -111,15 +115,15 @@ func GeneratePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 	)
 
 	// 5. IL PONTE: Creazione Link Simbolici (Layout)
-	// Essenziale per Arch Linux (es. airootfs.sfs -> filesystem.squashfs)
 	if task != nil && len(task.Remaster.IsoLinks) > 0 {
 		for dst, src := range task.Remaster.IsoLinks {
 			linkCmd := fmt.Sprintf("mkdir -p $(dirname %s/iso/%s) && ln -sf %s %s/iso/%s",
 				workPath, dst, src, workPath, dst)
 			plan.Plan = append(plan.Plan, Action{
 				Command:    "oa_sys_shell",
+				Info:       fmt.Sprintf("Creating ISO layout symlink: %s", dst),
 				RunCommand: linkCmd,
-				Chroot:     false, // Azione fuori dal chroot, agisce sulla directory di lavoro
+				Chroot:     false,
 			})
 		}
 	}
