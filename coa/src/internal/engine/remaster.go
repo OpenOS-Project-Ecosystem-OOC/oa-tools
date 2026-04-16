@@ -67,7 +67,7 @@ func ExecutePlan(plan FlightPlan) {
 	if err != nil {
 		log.Fatalf("\033[1;31m[coa]\033[0m Temp file error: %v", err)
 	}
-	defer os.Remove(tmpJsonPath)
+	// defer os.Remove(tmpJsonPath)
 
 	oaPath := getOaPath()
 	cmd := exec.Command("sudo", oaPath, tmpJsonPath)
