@@ -114,6 +114,24 @@ func GeneratePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 		Action{Command: "oa_remaster_uefi", BootParams: bootParams},
 	)
 
+	// Correzione bootloader UEFI
+	err := pilot.GenerateBootConfig(d.FamilyID, task)
+	if err != nil {
+		fmt.Printf("[ERRORE] Il Pilot non ha scritto il file: %v\n", err)
+	} else {
+		fmt.Println("[OK] File /tmp/coa/grub.cfg.final generato con successo!")
+	}
+
+	// bootParams = task.Remaster.BootParams
+	plan.Plan = append(plan.Plan,
+		Action{
+			Command:    "oa_sys_shell",
+			RunCommand: "cp /tmp/coa/grub.cfg.final /home/eggs/iso/boot/grub/grub.cfg",
+			Chroot:     false,
+			Info:       "Overwriting GRUB configuration with Arch-specific parameters",
+		},
+	)
+
 	// 5. IL PONTE: Creazione Link Simbolici (Layout)
 	if task != nil && len(task.Remaster.IsoLinks) > 0 {
 		for dst, src := range task.Remaster.IsoLinks {

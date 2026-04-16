@@ -191,3 +191,35 @@ func RunBrainLint() {
 		fmt.Println("\n[SUCCESSO] Il Cervello è ora ordinato e riconoscibile.")
 	}
 }
+
+// GenerateBootConfig crea il file grub.cfg basandosi sui dati del brain
+func GenerateBootConfig(familyID string, task *InitrdTask) error {
+	label := "OA_LIVE" // Potrebbe essere dinamico in futuro
+	params := task.Remaster.BootParams
+
+	// Definiamo i percorsi del kernel/initrd (possono essere spostati nel brain.d se variano ancora)
+	kernelPath := "/live/vmlinuz"
+	initrdPath := "/live/initrd.img"
+
+	if familyID == "archlinux" {
+		kernelPath = "/boot/vmlinuz-linux-lts"
+		initrdPath = "/boot/initramfs-linux.img"
+	}
+
+	// Template GRUB
+	content := fmt.Sprintf(`search --no-floppy --set=root --label %s
+set default="0"
+set timeout=10
+
+menuentry "oa Live System (%s)" {
+    echo "Loading kernel..."
+    linux %s %s
+    echo "Loading initial ramdisk..."
+    initrd %s
+}
+`, label, familyID, kernelPath, params, initrdPath)
+
+	// Assicuriamoci che la cartella temporanea esista
+	os.MkdirAll("/tmp/coa", 0755)
+	return os.WriteFile("/tmp/coa/grub.cfg.final", []byte(content), 0644)
+}
