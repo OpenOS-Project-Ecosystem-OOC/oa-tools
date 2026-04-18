@@ -1,6 +1,5 @@
-# ~/penguins-eggs/dracut/modules.d/00debug-shell/module-setup.sh
-
 #!/bin/bash
+# ~/penguins-eggs/dracut/modules.d/00debug-shell/module-setup.sh
 
 check() {
     return 0
