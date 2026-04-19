@@ -3,6 +3,7 @@ package engine
 import (
 	"coa/src/internal/distro"
 	"coa/src/internal/pilot"
+	"fmt"
 )
 
 func generatePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
@@ -40,6 +41,12 @@ func generatePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 	)
 
 	// fix da rimuovere sovrascrive uefi menu
+	err := pilot.GenerateBootConfig(d.FamilyID, profile)
+	if err != nil {
+		// Se fallisce, stampiamo l'errore ma proviamo a procedere
+		// (o blocchiamo qui se preferisci un approccio più rigido)
+		fmt.Printf("[ERRORE] Il Pilota non ha generato il boot config: %v\n", err)
+	}
 	plan.Plan = append(plan.Plan, Action{
 		Command:    "oa_sys_shell",
 		RunCommand: "cp /tmp/coa/grub.cfg.final /home/eggs/iso/boot/grub/grub.cfg",
