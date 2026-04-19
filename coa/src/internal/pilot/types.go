@@ -23,7 +23,7 @@ type IdentityConfig struct {
 
 type InitrdConfig struct {
 	Command string            `yaml:"command"`
-	Files   map[string]string `yaml:"files"`
+	Files   map[string]string `yaml:"setup_files"`
 }
 
 type BootConfig struct {
