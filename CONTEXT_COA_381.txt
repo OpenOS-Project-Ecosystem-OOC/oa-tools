@@ -2429,8 +2429,8 @@ func HandleRemaster(mode string, workPath string, d *distro.Distro) {
 
 	fmt.Printf("\033[1;32m[coa]\033[0m Starting production flight...\n")
 
-	// TODO: Chiamerà generatePlan (da spostare in engine/plan.go)
-	flightPlan := generatePlan(d, mode, workPath)
+	// TODO: Chiamerà generateRemasterPlan (da spostare in engine/plan.go)
+	flightPlan := generateRemasterPlan(d, mode, workPath)
 
 	if len(flightPlan.Plan) > 0 && flightPlan.Plan[0].Command == "action_prepare" {
 		flightPlan.Plan = flightPlan.Plan[1:]
@@ -2528,7 +2528,7 @@ import (
 	"path/filepath"
 )
 
-func generatePlan(d *distro.Distro, mode string, workPath string) FlightPlan {
+func generateRemasterPlan(d *distro.Distro, mode string, workPath string) FlightPlan {
 	// 0. Inizializzazione della base del Piano di Volo
 	plan := FlightPlan{
 		PathLiveFs:      workPath,

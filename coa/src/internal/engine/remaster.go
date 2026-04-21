@@ -46,8 +46,8 @@ func HandleRemaster(mode string, workPath string, d *distro.Distro) {
 
 	fmt.Printf("\033[1;32m[coa]\033[0m Starting production flight...\n")
 
-	// TODO: Chiamerà generatePlan (da spostare in engine/plan.go)
-	flightPlan := generatePlan(d, mode, workPath)
+	// TODO: Chiamerà generateRemasterPlan (da spostare in engine/plan.go)
+	flightPlan := generateRemasterPlan(d, mode, workPath)
 
 	if len(flightPlan.Plan) > 0 && flightPlan.Plan[0].Command == "action_prepare" {
 		flightPlan.Plan = flightPlan.Plan[1:]
@@ -59,23 +59,41 @@ func HandleRemaster(mode string, workPath string, d *distro.Distro) {
 func executePlan(plan FlightPlan) {
 	jsonData, err := json.MarshalIndent(plan, "", "  ")
 	if err != nil {
-		log.Fatalf("\033[1;31m[coa]\033[0m JSON Error: %v", err)
+		fmt.Printf("\033[1;31m[coa]\033[0m JSON Error: %v\n", err)
+		os.Exit(1)
 	}
 
 	tmpJSONPath := "oa-plan.json"
 	err = os.WriteFile(tmpJSONPath, jsonData, 0644)
 	if err != nil {
-		log.Fatalf("\033[1;31m[coa]\033[0m Temp file error: %v", err)
+		fmt.Printf("\033[1;31m[coa]\033[0m Temp file error: %v\n", err)
+		os.Exit(1)
 	}
-	// defer os.Remove(tmpJSONPath)
 
 	oaPath := getOaPath()
 	cmd := exec.Command("sudo", oaPath, tmpJSONPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	// Esecuzione del motore C
 	if err := cmd.Run(); err != nil {
-		log.Fatalf("\n\033[1;31m[coa]\033[0m Engine error: %v", err)
+		fmt.Printf("\n\033[1;31m[coa-FATAL]\033[0m Il motore 'oa' si è interrotto con un errore: %v\n", err)
+		fmt.Println("\033[1;33m[coa-RECOVERY]\033[0m Avvio procedura di smontaggio d'emergenza (oa cleanup)...")
+
+		// Invochiamo direttamente 'oa cleanup' invece di HandleKill()
+		// Questo libera i mount ma SALVA la cartella di lavoro per permetterti di fare debug!
+		cleanupCmd := exec.Command("sudo", oaPath, "cleanup")
+		cleanupCmd.Stdout = os.Stdout
+		cleanupCmd.Stderr = os.Stderr
+
+		if cleanupErr := cleanupCmd.Run(); cleanupErr != nil {
+			fmt.Printf("\033[1;31m[coa-ERROR]\033[0m Pulizia d'emergenza fallita: %v\n", cleanupErr)
+		} else {
+			fmt.Println("\033[1;32m[coa]\033[0m Volo abortito. I mount sono stati rimossi in sicurezza.")
+			fmt.Println("\033[1;32m[coa]\033[0m La cartella di lavoro è intatta. Puoi ispezionare i file.")
+		}
+
+		os.Exit(1)
 	}
 }
 

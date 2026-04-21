@@ -30,6 +30,8 @@ char *read_file(const char *filename) {
 
 // Il "Vigile Urbano": smista i verbi ai vari moduli tramite OA_Context
 /* oa/src/main.c */
+// Il "Vigile Urbano": smista i verbi ai vari moduli tramite OA_Context
+/* oa/src/main.c */
 int execute_verb(cJSON *root, cJSON *task) {
     cJSON *command = cJSON_GetObjectItemCaseSensitive(task, "command");
     cJSON *info = cJSON_GetObjectItemCaseSensitive(task, "info");
@@ -42,18 +44,39 @@ int execute_verb(cJSON *root, cJSON *task) {
     const char *cmd_name = command->valuestring;
     OA_Context ctx = { .root = root, .task = task };
     
-if (cJSON_IsString(info) && info->valuestring != NULL) {
+    if (cJSON_IsString(info) && info->valuestring != NULL) {
         // Se coa ha inviato una descrizione "umana", usala
-        printf("[oa] %s\n", info->valuestring);
+        printf("\033[1;36m[oa]\033[0m %s\n", info->valuestring);
     }
 
     LOG_INFO(">>> dispatching to: %s", cmd_name);
     int status = 1;
 
-    if (strcmp(cmd_name, "oa_mount") == 0)          status = oa_mount(&ctx);
-    else if (strcmp(cmd_name, "oa_shell") == 0)     status = oa_shell(&ctx);
-    else if (strcmp(cmd_name, "oa_umount") == 0)    status = oa_umount(&ctx);
-    else if (strcmp(cmd_name, "oa_users") == 0)     status = oa_users(&ctx);
+    if (strcmp(cmd_name, "oa_mount") == 0) {
+        status = oa_mount(&ctx);
+    } 
+    else if (strcmp(cmd_name, "oa_shell") == 0) {
+        status = oa_shell(&ctx);
+    } 
+    else if (strcmp(cmd_name, "oa_umount") == 0) {
+        status = oa_umount(&ctx);
+    } 
+    else if (strcmp(cmd_name, "oa_users") == 0) {
+        status = oa_users(&ctx);
+    } 
+    // AGGIUNTO: Chiusura ufficiale e pacifica del volo
+    else if (strcmp(cmd_name, "oa_remaster_cleanup") == 0) {
+        LOG_INFO("Smontaggio filesystem virtuali (Recursive Lazy Unmount)...");
+        int res1 = system("umount -R -l /home/eggs/liveroot 2>/dev/null");
+        int res2 = system("umount -R -l /home/eggs/.overlay 2>/dev/null");
+        
+        if (res1 == 0 && res2 == 0) {
+            LOG_INFO("Cleanup completed successfully.");
+        } else {
+            LOG_INFO("Cleanup eseguito (alcuni target potevano essere gia liberi).");
+        }
+        status = 0; // Impostiamo lo stato a 0 (successo) per non far fallire il piano
+    } 
     else {
         LOG_ERR("Unknown command requested: %s", cmd_name);
         return 1;
@@ -62,10 +85,23 @@ if (cJSON_IsString(info) && info->valuestring != NULL) {
     return status;
 }
 
+/**
+ * main
+ */
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         printf("oa engine v%s\nUsage: %s <plan.json>\n",OA_VERSION, argv[0]);
         return 1;
+    }
+
+    // In main.c, all'inizio del main()
+    if (argc >= 2 && strcmp(argv[1], "cleanup") == 0) {
+        printf("[OA] Esecuzione pulizia d'emergenza (Unmount Recursive)...\n");
+        // Smonta in modo ricorsivo e pigro la liveroot e l'overlay
+        system("umount -R -l /home/eggs/liveroot 2>/dev/null");
+        system("umount -R -l /home/eggs/.overlay 2>/dev/null");
+        printf("[OA] Ambiente smontato e messo in sicurezza.\n");
+        return 0;
     }
 
     // Inizializziamo il logger subito (es. oa.log per chiarezza)
