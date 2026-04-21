@@ -27,7 +27,9 @@ build:coa:
   stage: build
   image: golang:1.24
   script:
-    - cd coa && go build -o ../dist/coa ./...
+    # Build the main package (src/main.go) and output to dist/coa
+    - mkdir -p ../dist
+    - cd coa && go build -o ../dist/coa ./src
   artifacts:
     paths: [dist/]
     expire_in: 7 days
