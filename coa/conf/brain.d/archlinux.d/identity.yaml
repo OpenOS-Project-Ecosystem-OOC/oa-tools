@@ -1,6 +1,6 @@
 # [ coa brain unit ]
 # family: archlinux
-# area:   boot
+# area:   identitfy
 # --------------------------------------------------
-params: "archisobasedir=arch archisolabel=OA_LIVE cow_spacesize=10G"
-  
+admin_group: "wheel"
+user_groups: ["video", "audio", "autologin"]

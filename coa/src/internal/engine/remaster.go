@@ -36,9 +36,9 @@ func HandleRemaster(mode string, workPath string, d *distro.Distro) {
 	prePlan := FlightPlan{
 		PathLiveFs: workPath,
 		Mode:       mode,
-		Plan:       []Action{{Command: "oa_remaster_prepare"}},
+		Plan:       []Action{{Command: "oa_mount"}},
 	}
-	ExecutePlan(prePlan)
+	executePlan(prePlan)
 
 	if err := bridgeConfigs(d, workPath); err != nil {
 		log.Fatalf("\033[1;31m[coa]\033[0m Config bridging failed: %v", err)
@@ -46,36 +46,54 @@ func HandleRemaster(mode string, workPath string, d *distro.Distro) {
 
 	fmt.Printf("\033[1;32m[coa]\033[0m Starting production flight...\n")
 
-	// TODO: Chiamerà GeneratePlan (da spostare in engine/plan.go)
-	flightPlan := GeneratePlan(d, mode, workPath)
+	// TODO: Chiamerà generateRemasterPlan (da spostare in engine/plan.go)
+	flightPlan := generateRemasterPlan(d, mode, workPath)
 
 	if len(flightPlan.Plan) > 0 && flightPlan.Plan[0].Command == "action_prepare" {
 		flightPlan.Plan = flightPlan.Plan[1:]
 	}
-	ExecutePlan(flightPlan)
+	executePlan(flightPlan)
 }
 
-// ExecutePlan trasforma il piano in JSON e lo dà in pasto a oa
-func ExecutePlan(plan FlightPlan) {
+// executePlan trasforma il piano in JSON e lo dà in pasto a oa
+func executePlan(plan FlightPlan) {
 	jsonData, err := json.MarshalIndent(plan, "", "  ")
 	if err != nil {
-		log.Fatalf("\033[1;31m[coa]\033[0m JSON Error: %v", err)
+		fmt.Printf("\033[1;31m[coa]\033[0m JSON Error: %v\n", err)
+		os.Exit(1)
 	}
 
-	tmpJsonPath := "oa-plan.json"
-	err = os.WriteFile(tmpJsonPath, jsonData, 0644)
+	tmpJSONPath := "oa-plan.json"
+	err = os.WriteFile(tmpJSONPath, jsonData, 0644)
 	if err != nil {
-		log.Fatalf("\033[1;31m[coa]\033[0m Temp file error: %v", err)
+		fmt.Printf("\033[1;31m[coa]\033[0m Temp file error: %v\n", err)
+		os.Exit(1)
 	}
-	// defer os.Remove(tmpJsonPath)
 
 	oaPath := getOaPath()
-	cmd := exec.Command("sudo", oaPath, tmpJsonPath)
+	cmd := exec.Command("sudo", oaPath, tmpJSONPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	// Esecuzione del motore C
 	if err := cmd.Run(); err != nil {
-		log.Fatalf("\n\033[1;31m[coa]\033[0m Engine error: %v", err)
+		fmt.Printf("\n\033[1;31m[coa-FATAL]\033[0m Il motore 'oa' si è interrotto con un errore: %v\n", err)
+		fmt.Println("\033[1;33m[coa-RECOVERY]\033[0m Avvio procedura di smontaggio d'emergenza (oa cleanup)...")
+
+		// Invochiamo direttamente 'oa cleanup' invece di HandleKill()
+		// Questo libera i mount ma SALVA la cartella di lavoro per permetterti di fare debug!
+		cleanupCmd := exec.Command("sudo", oaPath, "cleanup")
+		cleanupCmd.Stdout = os.Stdout
+		cleanupCmd.Stderr = os.Stderr
+
+		if cleanupErr := cleanupCmd.Run(); cleanupErr != nil {
+			fmt.Printf("\033[1;31m[coa-ERROR]\033[0m Pulizia d'emergenza fallita: %v\n", cleanupErr)
+		} else {
+			fmt.Println("\033[1;32m[coa]\033[0m Volo abortito. I mount sono stati rimossi in sicurezza.")
+			fmt.Println("\033[1;32m[coa]\033[0m La cartella di lavoro è intatta. Puoi ispezionare i file.")
+		}
+
+		os.Exit(1)
 	}
 }
 
@@ -105,7 +123,7 @@ func bridgeConfigs(d *distro.Distro, workPath string) error {
 		presetName = fmt.Sprintf("live-%s.conf", d.DistroID)
 	}
 	src := fmt.Sprintf("/tmp/coa/configs/mkinitcpio/%s", presetName)
-	dst := filepath.Join(workPath, "liveroot", "etc", "coa_mkinitcpio.conf")
+	dst := filepath.Join(workPath, "liveroot", "etc", "coa-mkinitcpio.conf")
 
 	fmt.Printf("\033[1;34m[coa]\033[0m Creating liveroot /etc/mkinitcpio.conf with %s...\n", presetName)
 

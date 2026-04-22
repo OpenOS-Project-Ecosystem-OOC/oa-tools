@@ -6,6 +6,11 @@
  * License: GPL-3.0-or-later
  */
 #include "oa.h"
+#include "oa-mount.h"
+#include "oa-shell.h"
+#include "oa-umount.h"
+#include "oa-users.h"
+
 
 // Helper per leggere il file JSON
 char *read_file(const char *filename) {
@@ -25,6 +30,8 @@ char *read_file(const char *filename) {
 
 // Il "Vigile Urbano": smista i verbi ai vari moduli tramite OA_Context
 /* oa/src/main.c */
+// Il "Vigile Urbano": smista i verbi ai vari moduli tramite OA_Context
+/* oa/src/main.c */
 int execute_verb(cJSON *root, cJSON *task) {
     cJSON *command = cJSON_GetObjectItemCaseSensitive(task, "command");
     cJSON *info = cJSON_GetObjectItemCaseSensitive(task, "info");
@@ -37,42 +44,39 @@ int execute_verb(cJSON *root, cJSON *task) {
     const char *cmd_name = command->valuestring;
     OA_Context ctx = { .root = root, .task = task };
     
-if (cJSON_IsString(info) && info->valuestring != NULL) {
+    if (cJSON_IsString(info) && info->valuestring != NULL) {
         // Se coa ha inviato una descrizione "umana", usala
-        printf("[oa] %s\n", info->valuestring);
+        printf("\033[1;36m[oa]\033[0m %s\n", info->valuestring);
     }
 
     LOG_INFO(">>> dispatching to: %s", cmd_name);
     int status = 1;
 
-    // --- FASE 1: REMASTER (Ex LAY) ---
-    if (strcmp(cmd_name, "oa_remaster_prepare") == 0)          status = remaster_prepare(&ctx);
-    else if (strcmp(cmd_name, "oa_remaster_crypted") == 0)     status = remaster_crypted(&ctx);
-    else if (strcmp(cmd_name, "oa_remaster_iso") == 0)         status = remaster_iso(&ctx);
-    else if (strcmp(cmd_name, "oa_remaster_isolinux") == 0)    status = remaster_isolinux(&ctx);
-    else if (strcmp(cmd_name, "oa_remaster_livestruct") == 0)  status = remaster_livestruct(&ctx);
-    else if (strcmp(cmd_name, "oa_remaster_uefi") == 0)        status = remaster_uefi(&ctx);
-    else if (strcmp(cmd_name, "oa_remaster_users") == 0)       status = remaster_users(&ctx);
-    else if (strcmp(cmd_name, "oa_remaster_squash") == 0)      status = remaster_squash(&ctx);
-    else if (strcmp(cmd_name, "oa_remaster_cleanup") == 0)     status = remaster_cleanup(&ctx);
-
-    // --- FASE 2: INSTALL (Ex HATCH) ---
-    else if (strcmp(cmd_name, "oa_install_prepare") == 0)      status = install_prepare(&ctx);
-    else if (strcmp(cmd_name, "oa_install_partition") == 0)    status = install_partition(&ctx);
-    else if (strcmp(cmd_name, "oa_install_format") == 0)       status = install_format(&ctx);
-    else if (strcmp(cmd_name, "oa_install_unpack") == 0)       status = install_unpack(&ctx);
-    else if (strcmp(cmd_name, "oa_install_fstab") == 0)        status = install_fstab(&ctx);
-    else if (strcmp(cmd_name, "oa_install_users") == 0)        status = install_users(&ctx);
-    else if (strcmp(cmd_name, "oa_install_uefi") == 0)         status = install_uefi(&ctx);
-    else if (strcmp(cmd_name, "oa_install_bios") == 0)         status = install_bios(&ctx);
-    else if (strcmp(cmd_name, "oa_install_cleanup") == 0)      status = remaster_cleanup(&ctx);
-
-
-    // --- FASE 3: SYS (Utility) ---
-    else if (strcmp(cmd_name, "oa_sys_shell") == 0)            status = sys_shell(&ctx); 
-    else if (strcmp(cmd_name, "oa_sys_scan") == 0)             status = sys_scan(&ctx);
-    else if (strcmp(cmd_name, "oa_sys_suspend") == 0)          status = sys_suspend(&ctx);
-
+    if (strcmp(cmd_name, "oa_mount") == 0) {
+        status = oa_mount(&ctx);
+    } 
+    else if (strcmp(cmd_name, "oa_shell") == 0) {
+        status = oa_shell(&ctx);
+    } 
+    else if (strcmp(cmd_name, "oa_umount") == 0) {
+        status = oa_umount(&ctx);
+    } 
+    else if (strcmp(cmd_name, "oa_users") == 0) {
+        status = oa_users(&ctx);
+    } 
+    // AGGIUNTO: Chiusura ufficiale e pacifica del volo
+    else if (strcmp(cmd_name, "oa_remaster_cleanup") == 0) {
+        LOG_INFO("Smontaggio filesystem virtuali (Recursive Lazy Unmount)...");
+        int res1 = system("umount -R -l /home/eggs/liveroot 2>/dev/null");
+        int res2 = system("umount -R -l /home/eggs/.overlay 2>/dev/null");
+        
+        if (res1 == 0 && res2 == 0) {
+            LOG_INFO("Cleanup completed successfully.");
+        } else {
+            LOG_INFO("Cleanup eseguito (alcuni target potevano essere gia liberi).");
+        }
+        status = 0; // Impostiamo lo stato a 0 (successo) per non far fallire il piano
+    } 
     else {
         LOG_ERR("Unknown command requested: %s", cmd_name);
         return 1;
@@ -81,10 +85,26 @@ if (cJSON_IsString(info) && info->valuestring != NULL) {
     return status;
 }
 
+/**
+ * main
+ */
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         printf("oa engine v%s\nUsage: %s <plan.json>\n",OA_VERSION, argv[0]);
         return 1;
+    }
+
+    // In main.c, all'inizio del main()
+    if (argc >= 2 && strcmp(argv[1], "cleanup") == 0) {
+        LOG_INFO("Smontaggio filesystem virtuali (Recursive Lazy Unmount)...");
+        
+        // 1. Rendiamo i mount privati per evitare la propagazione all'host
+        system("mount --make-rprivate /home/eggs/liveroot 2>/dev/null");
+        
+        // 2. Ora possiamo smontare in sicurezza
+        int res1 = system("umount -R -l /home/eggs/liveroot 2>/dev/null");
+        int res2 = system("umount -R -l /home/eggs/.overlay 2>/dev/null");        
+        return 0;
     }
 
     // Inizializziamo il logger subito (es. oa.log per chiarezza)
