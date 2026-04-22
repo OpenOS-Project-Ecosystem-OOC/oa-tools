@@ -1,47 +1,47 @@
+/*
+ * src/actions/install_uefi.c
+ * Remastering core: GRUB installation on physical hardware (Krill)
+ * oa: eggs in my dialect🥚🥚
+ *
+ * Author: Piero Proietti <piero.proietti@gmail.com>
+ * License: GPL-3.0-or-later
+ */
 #include "oa.h"
-// #include <stdio.h>
-// #include <stdlib.h>
+
+static void get_partition_path(const char *disk, int part_num, char *out_path, size_t max_len) {
+    if (strstr(disk, "nvme") || strstr(disk, "mmcblk") || strstr(disk, "loop")) {
+        snprintf(out_path, max_len, "%sp%d", disk, part_num);
+    } else {
+        snprintf(out_path, max_len, "%s%d", disk, part_num);
+    }
+}
 
 int oa_format(OA_Context *ctx) {
-    cJSON *actions_obj = cJSON_GetObjectItemCaseSensitive(ctx->task, "actions");
-
-    if (!cJSON_IsArray(actions_obj)) {
-        LOG_ERR("oa_format requires an 'actions' array.");
-        return 1;
+    cJSON *disk_node = cJSON_GetObjectItemCaseSensitive(ctx->task, "run_command");
+    if (!cJSON_IsString(disk_node) || (disk_node->valuestring == NULL)) {
+        fprintf(stderr, "\033[1;31m[oa]\033[0m Target disk missing in install_format\n");
+        return 1; 
     }
+    
+    const char *disk = disk_node->valuestring;
+    char efi_part[128];
+    char root_part[128];
+    
+    // AGGIORNATO: EFI è la 2, ROOT è la 3
+    get_partition_path(disk, 2, efi_part, sizeof(efi_part));
+    get_partition_path(disk, 3, root_part, sizeof(root_part));
 
-    printf("\033[1;35m[oa]\033[0m Formattazione partizioni in corso...\n");
+    printf("\033[1;34m[oa]\033[0m Formatting partitions on: \033[1m%s\033[0m\n", disk);
+    
+    char cmd[512];
+    printf("  -> Formatting EFI (%s) as FAT32...\n", efi_part);
+    snprintf(cmd, sizeof(cmd), "mkfs.vfat -F32 %s > /dev/null", efi_part);
+    if (system(cmd) != 0) return 1;
 
-    cJSON *action;
-    cJSON_ArrayForEach(action, actions_obj) {
-        cJSON *dev_obj = cJSON_GetObjectItemCaseSensitive(action, "device");
-        cJSON *fs_obj  = cJSON_GetObjectItemCaseSensitive(action, "fs");
-        cJSON *lbl_obj = cJSON_GetObjectItemCaseSensitive(action, "label");
+    printf("  -> Formatting ROOT (%s) as EXT4...\n", root_part);
+    snprintf(cmd, sizeof(cmd), "mkfs.ext4 -F %s > /dev/null 2>&1", root_part);
+    if (system(cmd) != 0) return 1;
 
-        if (!cJSON_IsString(dev_obj) || !cJSON_IsString(fs_obj)) continue;
-
-        const char *device = dev_obj->valuestring;
-        const char *fs = fs_obj->valuestring;
-        const char *label = cJSON_IsString(lbl_obj) ? lbl_obj->valuestring : "";
-
-        char cmd[512];
-        if (strcmp(fs, "vfat") == 0) {
-            snprintf(cmd, sizeof(cmd), "mkfs.vfat -F32 -n '%s' %s", label, device);
-        } else if (strcmp(fs, "swap") == 0) {
-            snprintf(cmd, sizeof(cmd), "mkswap -L '%s' %s", label, device);
-        } else {
-            // L'opzione -F forza la formattazione senza chiedere conferme (ext4/btrfs)
-            snprintf(cmd, sizeof(cmd), "mkfs.%s -F -L '%s' %s", fs, label, device);
-        }
-
-        LOG_INFO("Esecuzione: %s", cmd);
-        
-        // SCOMMENTA QUESTA RIGA PER RENDERLO DISTRUTTIVO!
-        // int res = system(cmd);
-        // if (res != 0) {
-        //     LOG_ERR("Formattazione fallita su %s", device);
-        //     return 1;
-        // }
-    }
+    printf("\033[1;32m[SUCCESS]\033[0m Partitions successfully formatted.\n");
     return 0;
 }
