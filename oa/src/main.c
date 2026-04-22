@@ -10,7 +10,8 @@
 #include "oa-shell.h"
 #include "oa-umount.h"
 #include "oa-users.h"
-
+#include "oa_partition.h"
+#include "oa_format.h"
 
 // Helper per leggere il file JSON
 char *read_file(const char *filename) {
@@ -63,7 +64,12 @@ int execute_verb(cJSON *root, cJSON *task) {
     } 
     else if (strcmp(cmd_name, "oa_users") == 0) {
         status = oa_users(&ctx);
-    } 
+    } else if (strcmp(cmd_name, "oa_partition") == 0) {
+        return oa_partition(&ctx);
+    } else if (strcmp(cmd_name, "oa_format") == 0) {
+        return oa_format(&ctx);
+    }
+
     // AGGIUNTO: Chiusura ufficiale e pacifica del volo
     else if (strcmp(cmd_name, "oa_remaster_cleanup") == 0) {
         LOG_INFO("Smontaggio filesystem virtuali (Recursive Lazy Unmount)...");
