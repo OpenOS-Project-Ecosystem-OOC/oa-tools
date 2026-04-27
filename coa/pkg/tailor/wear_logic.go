@@ -69,19 +69,21 @@ func loadSuit(yamlFile string) (*Suit, error) {
 func getAvailablePackages() map[string]struct{} {
 	available := make(map[string]struct{})
 
-	// Eseguiamo il comando e catturiamo l'output
+	// Usiamo 'apt-cache pkgnames'
 	out, err := utils.ExecCapture("apt-cache pkgnames")
 	if err != nil {
+		utils.LogError("Errore durante l'esecuzione di apt-cache: %v", err)
 		return available
 	}
 
-	lines := strings.Split(out, "\n")
-	for _, line := range lines {
-		pkg := strings.TrimSpace(line)
-		if pkg != "" {
-			available[pkg] = struct{}{}
-		}
+	// Sostituiamo ogni possibile ritorno a capo (\r\n o \n) con uno spazio
+	// e poi dividiamo per campi per essere sicuri di avere solo i nomi puliti
+	fields := strings.Fields(out)
+	for _, pkg := range fields {
+		available[pkg] = struct{}{}
 	}
+
+	utils.LogCoala("Database pacchetti caricato: %d nomi trovati.", len(available))
 	return available
 }
 
