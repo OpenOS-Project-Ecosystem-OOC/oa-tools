@@ -54,7 +54,7 @@ func Wear(costumeName string, noAcc bool, noFirm bool) error {
 		var toInstall []string
 
 		for _, pkg := range suit.Sequence.Packages {
-			// Puliuamo il nome del pacchetto da spazi, tab o caratteri invisibili
+			// Puliamo il nome del pacchetto da spazi, tab o caratteri invisibili
 			cleanPkg := strings.TrimSpace(pkg)
 
 			// Se la riga era vuota o solo uno spazio (succede con i commenti nello YAML)
