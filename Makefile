@@ -27,19 +27,16 @@ build_oa:
 	@$(MAKE) -C $(OA_DIR) VERSION="$(VERSION)" LIBS="-lcrypt"
 
 build_coa:
-	@echo "  MAKING coa (Version: $(VERSION))..."
+	@echo "  MAKING coa..."
 	@cd $(COA_DIR) && go build -ldflags "-X 'coa/pkg/cmd.AppVersion=$(VERSION)'" -o coa main.go
+
+# Target dedicato: da lanciare solo quando vuoi aggiornare i docs su Git
+docs: build_coa
 	@echo "  GENERATING DOCUMENTATION & COMPLETIONS..."
-	# Creiamo le directory se non esistono, altrimenti i comandi potrebbero fallire
-	@mkdir -p $(COA_DIR)/docs/man $(COA_DIR)/docs/completion $(COA_DIR)/docs/md
-	
-	# 1. Generazione documenti via comando interno
-	@-./$(COA_BIN) _gen_docs --target ./$(COA_DIR)/docs/md 2>/dev/null || true
-	
-	# 2. Generazione esplicita dei completamenti (fondamentale per il TAB)
-	@-./$(COA_BIN) completion bash > $(COA_DIR)/docs/completion/coa.bash 2>/dev/null || true
-	@-./$(COA_BIN) completion zsh > $(COA_DIR)/docs/completion/coa.zsh 2>/dev/null || true
-	
+	@mkdir -p $(COA_DIR)/docs/md $(COA_DIR)/docs/completion
+	@-./$(COA_BIN) _gen_docs --target ./$(COA_DIR)/docs/md
+	@-./$(COA_BIN) completion bash > $(COA_DIR)/docs/completion/coa.bash>/dev/null || true
+
 clean:
 	@echo "  Pulizia binari e piani di volo..."
 	@$(MAKE) -C $(OA_DIR) clean || true
