@@ -4,6 +4,11 @@
 oa/oa
 coa/coa
 
+# --- completeiom man, etc
+coa/docs/md/
+coa/docs/completion/
+coa/docs/man/
+
 # --- Build objects ---
 oa/obj/
 *.o

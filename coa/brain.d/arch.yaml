@@ -48,13 +48,14 @@ remaster:
     description: "Gestione nativa identità (Purge & Inject stile Yocto)"
     command: "oa_users"
 
+
   # ---------------------------------------------------------
   # PRIVILEGI SUDO
   # ---------------------------------------------------------
   - name: "coa-privileges"
-    description: "Abilitazione poteri sudo per il gruppo wheel (Arch standard)"
+    description: "Abilitazione poteri sudo per il gruppo live"
     command: "oa_shell"
-    run_command: "sh -c \"echo '%sudo ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/10-live-group && chmod 440 /etc/sudoers.d/10-live-group\""
+    run_command: "sh -c \"echo '%wheel ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/10-live-group && chmod 440 /etc/sudoers.d/10-live-group\""
     chroot: true
 
   # ---------------------------------------------------------
@@ -112,7 +113,7 @@ remaster:
     run_command: |
       set -e
       VOL_ID="OA_LIVE"
-      BOOT_PARAMS="archisobasedir=live archisolabel=${VOL_ID} cow_spacesize=2G #quiet splash"
+      BOOT_PARAMS="archisobasedir=arch archisolabel=${VOL_ID} cow_spacesize=2G # quiet splash"
       WORK_DIR="/home/eggs/isodir"
 
       # 1. GRUB.cfg
@@ -149,20 +150,6 @@ remaster:
 
 
   # ---------------------------------------------------------
-  # ARCH-COMPATIBILITY: Hardlink per ingannare gli hook archiso
-  # ---------------------------------------------------------
-  - name: "coa-arch-compat"
-    description: "Creazione gancio di compatibilità per Archiso"
-    command: "oa_shell"
-    run_command: |
-      # Andiamo nella radice della ISO (isodir)
-      cd /home/eggs/isodir
-      mkdir -p arch/x86_64
-      # Il link punta al file vero che risiede in live/
-      ln -sf ../../live/filesystem.squashfs ./arch/x86_64/airootfs.sfs
-    chroot: false
-
-  # ---------------------------------------------------------
   # COMPRESSIONE SQUASHFS
   # ---------------------------------------------------------
   - name: "coa-squashfs"
@@ -170,13 +157,26 @@ remaster:
     command: "oa_shell"
     run_command: "mksquashfs /home/eggs/liveroot /home/eggs/isodir/live/filesystem.squashfs -comp zstd -Xcompression-level 3 -b 1M -processors 4 -noappend -wildcards -ef /tmp/coa/excludes.list"
 
+
+  # ---------------------------------------------------------
+  # ARCH-COMPATIBILITY: Hardlink per ingannare gli hook archiso
+  # ---------------------------------------------------------
+  - name: "coa-arch-compat"
+    description: "Creazione gancio di compatibilità per Archiso"
+    command: "oa_shell"
+    run_command: |
+      cd /home/eggs/isodir
+      mkdir -p arch/x86_64
+      ln -f live/filesystem.squashfs arch/x86_64/airootfs.sfs
+    chroot: false
+
   # ---------------------------------------------------------
   # MASTERIZZAZIONE ISO (XORRISO)
   # ---------------------------------------------------------
   - name: "coa-xorriso"
     description: "Masterizzazione ISO finale"
     command: "oa_shell"
-    run_command: "xorriso -as mkisofs -R -J -joliet-long -l -cache-inodes -V 'OA_LIVE' -isohybrid-mbr /tmp/coa/bootloaders/ISOLINUX/isohdpfx.bin -partition_offset 16 -A 'OA_LIVE' -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e EFI/BOOT/efi.img -no-emul-boot -isohybrid-gpt-basdat -o /home/eggs/egg-of_final.iso /home/eggs/isodir"
+    run_command: "xorriso -as mkisofs -R -J -joliet-long -l -cache-inodes -V 'OA_LIVE' -isohybrid-mbr /tmp/coa/bootloaders/ISOLINUX/isohdpfx.bin -partition_offset 16 -A 'OA_LIVE' -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e EFI/BOOT/efi.img -no-emul-boot -isohybrid-gpt-basdat -o ${ISO_OUTPUT} /home/eggs/isodir"
 
   # ---------------------------------------------------------
   # PULIZIA FINALE
@@ -186,11 +186,17 @@ remaster:
     command: "oa_umount"
 
 # ==============================================================================
-# PROFILO DI INSTALLAZIONE (TARGET)
+# Profilo di Installazione per Arch Linux - Logica Evolution
 # ==============================================================================
 install:
-  - name: "coa-initrd-target"
-    description: "Rigenerazione mkinitcpio sul sistema installato"
-    command: "oa_shell"
-    run_command: "mkinitcpio -P"
-    chroot: true
+  - name: "finalize"
+    description: "Generazione initramfs e configurazione GRUB"
+    command: |
+      # Rigenera le immagini initramfs per tutti i kernel installati
+      mkinitcpio -P
+      
+      # Installa il bootloader (coa sostituirà /dev/sda con il disco reale)
+      grub-install --target=i386-pc --recheck /dev/sda
+      
+      # Genera il file di configurazione di GRUB
+      grub-mkconfig -o /boot/grub/grub.cfg

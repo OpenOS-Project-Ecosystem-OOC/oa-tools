@@ -38,7 +38,7 @@ func handleExportPkg(clean bool) {
 	case "debian", "ubuntu", "devuan":
 		pattern = "oa-tools*.deb"
 		extension = ".deb"
-	case "arch":
+	case "archlinux":
 		pattern = "oa-tools*.pkg.tar.zst"
 		extension = ".pkg.tar.zst"
 	case "fedora", "redhat", "suse":

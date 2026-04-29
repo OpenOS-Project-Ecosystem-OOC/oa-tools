@@ -27,11 +27,15 @@ build_oa:
 	@$(MAKE) -C $(OA_DIR) VERSION="$(VERSION)" LIBS="-lcrypt"
 
 build_coa:
-	@echo "  MAKING coa (Version: $(VERSION))..."
+	@echo "  MAKING coa..."
 	@cd $(COA_DIR) && go build -ldflags "-X 'coa/pkg/cmd.AppVersion=$(VERSION)'" -o coa main.go
-	@echo "  GENERATING DOCUMENTATION..."
-	# Il '-' iniziale impedisce a make di fallire se il comando _gen_docs non esiste ancora
-	@-./$(COA_BIN) _gen_docs --target ./$(COA_DIR)/docs 2>/dev/null || true
+
+# Target dedicato: da lanciare solo quando vuoi aggiornare i docs su Git
+docs: build_coa
+	@echo "  GENERATING DOCUMENTATION & COMPLETIONS..."
+	@mkdir -p $(COA_DIR)/docs/md $(COA_DIR)/docs/completion
+	@-./$(COA_BIN) _gen_docs --target ./$(COA_DIR)/docs/md
+	@-./$(COA_BIN) completion bash > $(COA_DIR)/docs/completion/coa.bash>/dev/null || true
 
 clean:
 	@echo "  Pulizia binari e piani di volo..."

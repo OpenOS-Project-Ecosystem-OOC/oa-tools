@@ -9,43 +9,46 @@ import (
 	"coa/pkg/assets"
 )
 
-// Costanti globali del pacchetto calamares
-const (
-	coaCalamaresDir = "/etc/calamares"
-	modulesDir      = "/etc/calamares/modules"
-	stagingDir      = "/tmp/coa"
-	ColorCyan       = "\033[1;36m"
-	ColorReset      = "\033[0m"
-)
-
 // logCalamares stampa i log con il prefisso coa
 func logCalamares(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
 	fmt.Printf("%s[coa-calamares]%s %s\n", ColorCyan, ColorReset, msg)
 }
 
-// SetupAndLaunch coordina la pulizia, l'estrazione e l'avvio
-func SetupAndLaunch() error {
+// Setup coordina la pulizia, l'estrazione e la configurazione dinamica
+func Setup() error {
 	logCalamares("Generazione ambiente Evolution Edition...")
 
+	// Pulizia e preparazione directory
 	os.RemoveAll(coaCalamaresDir)
 
 	if err := assets.ExtractCalamares(coaCalamaresDir); err != nil {
 		return fmt.Errorf("errore estrazione asset: %v", err)
 	}
-	
+
 	if err := os.MkdirAll(modulesDir, 0755); err != nil {
 		return fmt.Errorf("errore creazione directory moduli: %v", err)
 	}
 
+	// Qui dentro deployDynamicConfigs chiamerà anche la generazione di users.conf
 	if err := deployDynamicConfigs(); err != nil {
 		return err
 	}
 
-	logFile, _ := os.Create("/var/log/calamares.log")
+	return nil
+}
+
+// Launch avvia effettivamente il processo Calamares e gestisce i log
+func Launch() error {
+	logFile, err := os.Create("/var/log/calamares.log")
+	if err != nil {
+		return fmt.Errorf("impossibile creare il file di log: %v", err)
+	}
 	defer logFile.Close()
 
-	cmd := exec.Command("calamares", "-d", "-D", "8") 
+	cmd := exec.Command("calamares", "-d", "-D", "8")
+
+	// Mandiamo l'output sia a video che su file
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	cmd.Stdout = multiWriter
 	cmd.Stderr = multiWriter
@@ -67,7 +70,7 @@ func deployDynamicConfigs() error {
 	if err != nil {
 		return fmt.Errorf("modulo bootloader non trovato in staging: %v", err)
 	}
-	
+
 	return os.WriteFile(modulesDir+"/shellprocess_oa_bootloader.conf", bootData, 0644)
 }
 
