@@ -18,7 +18,19 @@ pkgrel=%s
 pkgdesc="oa-tools universal Linux remastering"
 arch=('x86_64')
 license=('GPL3')
-depends=('archiso' 'xorriso' 'squashfs-tools' 'git' 'rsync' 'sudo')
+depends=(
+    'mkinitcpio-archiso'     # <--- FONDAMENTALE: risolve l'errore del filesystem non trovato
+    'libisoburn'             # Fornisce xorriso per creare l'immagine ISO
+    'squashfs-tools'         # Comprime il sistema (airootfs.sfs)
+    'mtools'                 # Necessario per la partizione di boot EFI
+    'dosfstools'             # Necessario per formattare la partizione EFI (vfat)
+    'arch-install-scripts'   # Fornisce arch-chroot e genfstab
+    'grub'                   # Il bootloader per la ISO
+    'rsync'                  # Per copiare i file del sistema con permessi corretti
+    'sudo'                   # Per gestire i permessi durante il build
+    'pv'                     # (Pipe Viewer): Serve come "tachimetro"
+    'git'                    # wardrobe
+)
 conflicts=('penguins-eggs')
 backup=('etc/oa-tools.d/oa-tools.yaml')
 options=(!debug)
