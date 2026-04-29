@@ -66,6 +66,8 @@ func HandleBuild(d *distro.Distro, version string) {
 	switch d.FamilyID {
 	case "archlinux":
 		buildArchPackage(projRoot, baseVer, relNum)
+	case "manjaro":
+		buildManjaroPackage(projRoot, baseVer, relNum)
 	case "fedora", "rhel", "centos", "rocky", "almalinux":
 		buildFedoraPackage(projRoot, oaDir, coaDir, baseVer, relNum)
 	default:

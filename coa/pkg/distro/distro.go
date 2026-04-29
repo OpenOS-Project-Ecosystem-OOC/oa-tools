@@ -124,6 +124,12 @@ func NewDistro() *Distro {
 		d.DistroLike = "Debian"
 		d.DistroUniqueID = rawCodename
 		return d
+	case "manjaro":
+		d.FamilyID = "manjaro"
+		d.DistroLike = "Manjaro"
+		d.DistroUniqueID = "rolling"
+		return d
+
 	case "arch":
 		d.FamilyID = "archlinux"
 		d.DistroLike = "Arch"
