@@ -5,8 +5,12 @@ distributions:
     file: "debian.yaml"
   
   - id: "arch"
-    like: ["manjaro", "endeavouros"]
+    like: ["endeavouros"]
     file: "arch.yaml"
+
+  - id: "manjaro"
+    like: ["manjaro", "bigcommunity"]
+    file: "manjaro.yaml"
 
   - id: "fedora"
     like: ["nobara"]

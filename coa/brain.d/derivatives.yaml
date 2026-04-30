@@ -1,0 +1,13 @@
+- distroLike: "Manjaro"
+  codenameLike: "rolling"
+  family: "manjaro"
+  derivatives:
+    - "bigcommunity"
+    - "BigLinux"
+    
+- distroLike: "Ubuntu"
+  codenameLike: "trixie"
+  family: "debian"
+  derivatives:
+    - "ubuntu"
+    
