@@ -7,6 +7,7 @@ package distro
 
 import (
 	"bufio"
+	"coa/pkg/utils"
 	"fmt"
 	"os"
 	"runtime"
@@ -70,7 +71,7 @@ func resolveDerivative(distroID string, codenameID string) (bool, *Distro) {
 	for _, p := range paths {
 		yamlData, err = os.ReadFile(p)
 		if err == nil {
-			fmt.Printf("  \033[1;30m[debug]\033[0m Trovato: %-25s ", p)
+			utils.LogCoala("derivatives.yaml non trovato")
 			break // Trovato!
 		}
 	}
@@ -82,7 +83,7 @@ func resolveDerivative(distroID string, codenameID string) (bool, *Distro) {
 
 	var mappings []DerivativeMapping
 	if err := yaml.Unmarshal(yamlData, &mappings); err != nil {
-		fmt.Printf("\033[1;31m[coa]\033[0m Errore nel parsing di derivatives.yaml: %v\n", err)
+		utils.LogCoala("Errore nel parsing di derivatives.yaml")
 		return false, nil
 	}
 
@@ -124,7 +125,7 @@ func NewDistro() *Distro {
 		d.DistroLike = "Arch"
 		d.DistroUniqueID = "rolling"
 		return d
-		
+
 	case "debian":
 		d.FamilyID = "debian"
 		d.DistroLike = "Debian"
@@ -149,7 +150,7 @@ func NewDistro() *Distro {
 		return derivativeDistro
 	}
 
-	fmt.Printf("\033[1;31m[coa]\033[0m Distro sconosciuta (%s/%s). Aggiungila a derivatives.yaml!\n", rawID, rawCodename)
+	utils.LogCoala("[coa] Distro sconosciuta (%s/%s). Aggiungila a /etc/os-tools.d/brain.d/derivatives.yaml!\n", rawID, rawCodename)
 	os.Exit(1)
 	return nil
 }
