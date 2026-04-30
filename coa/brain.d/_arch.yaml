@@ -1,18 +1,18 @@
 # ==============================================================================
-# 00. PROFILO DI RIMASTERIZZAZIONE PER ARCH LINUX (OA) - EVOLUTION EDITION
+# PROFILO DI RIMASTERIZZAZIONE PER ARCH LINUX (OA) - EVOLUTION EDITION
 # ==============================================================================
 
 remaster:
 
   # ---------------------------------------------------------
-  # 01. SETUP FILESYSTEM E MOUNT
+  # SETUP FILESYSTEM E MOUNT
   # ---------------------------------------------------------
   - name: "coa-fs-setup"
     description: "Preparazione filesystem e mount (proiezione host)"
     command: "oa_mount_logic"
 
   # ---------------------------------------------------------
-  # 02. PREPARAZIONE BOOTLOADERS E UEFI
+  # PREPARAZIONE BOOTLOADERS E UEFI
   # ---------------------------------------------------------
   - name: "coa-bootloaders"
     description: "Copia dei bootloader e creazione immagine FAT per UEFI"
@@ -42,14 +42,15 @@ remaster:
       mcopy -i /home/eggs/isodir/EFI/BOOT/efi.img /home/eggs/isodir/boot/grub/grub.cfg ::/EFI/BOOT/grub.cfg
 
   # ---------------------------------------------------------
-  # 03. GESTIONE IDENTITÀ
+  # GESTIONE IDENTITÀ
   # ---------------------------------------------------------
   - name: "coa-identity"
     description: "Gestione nativa identità (Purge & Inject stile Yocto)"
     command: "oa_users"
 
+
   # ---------------------------------------------------------
-  # 04. PRIVILEGI SUDO
+  # PRIVILEGI SUDO
   # ---------------------------------------------------------
   - name: "coa-privileges"
     description: "Abilitazione poteri sudo per il gruppo live"
@@ -58,7 +59,7 @@ remaster:
     chroot: true
 
   # ---------------------------------------------------------
-  # 05. GENERAZIONE INITRAMFS
+  # GENERAZIONE INITRAMFS
   # ---------------------------------------------------------
   - name: "coa-initrd"
     description: "Generazione Initramfs dinamico tramite mkinitcpio (Arch)"
@@ -70,7 +71,7 @@ remaster:
       # 2. Scrittura "al volo" della configurazione Live
       cat << 'EOF' > /etc/mkinitcpio.conf
       MODULES=(loop dm-snapshot btrfs)
-      HOOKS=(base udev microcode modconf kms archiso archiso_loop_mnt archiso_pxe_common archiso_pxe_nbd archiso_pxe_http archiso_pxe_nfs block filesystems keyboard keymap consolefont filesystems fsck)
+      HOOKS=(base udev microcode modconf kms memdisk archiso archiso_loop_mnt archiso_pxe_common archiso_pxe_nbd archiso_pxe_http archiso_pxe_nfs block filesystems keyboard keymap consolefont filesystems fsck)
       COMPRESSION="zstd"      
       # --- FINE CONFIGURAZIONE LIVE ---
       EOF
@@ -83,7 +84,7 @@ remaster:
     chroot: true
 
   # ---------------------------------------------------------
-  # 06. COPIA KERNEL E INITRD (DINAMICA)
+  # COPIA KERNEL E INITRD (DINAMICA)
   # ---------------------------------------------------------
   - name: "coa-kernel-copy"
     description: "Copia del Kernel e Initrd (auto-rilevamento Arch)"
@@ -103,7 +104,7 @@ remaster:
     chroot: false
 
   # ---------------------------------------------------------
-  # 07. GENERAZIONE MENU DI BOOT (GRUB/ISOLINUX)
+  # GENERAZIONE MENU DI BOOT (GRUB/ISOLINUX)
   # ---------------------------------------------------------
   - name: "coa-live-menus"
     description: "Generazione configurazioni di boot (Kernel Arch style)"
@@ -147,16 +148,18 @@ remaster:
       configfile \$prefix/grub.cfg
       EOF
 
+
   # ---------------------------------------------------------
-  # 08. COMPRESSIONE SQUASHFS
+  # COMPRESSIONE SQUASHFS
   # ---------------------------------------------------------
   - name: "coa-squashfs"
     description: "Compressione del sistema (ZSTD)"
     command: "oa_shell"
     run_command: "mksquashfs /home/eggs/liveroot /home/eggs/isodir/live/filesystem.squashfs -comp zstd -Xcompression-level 3 -b 1M -processors 4 -noappend -wildcards -ef /tmp/coa/excludes.list"
 
+
   # ---------------------------------------------------------
-  # 09. ARCH-COMPATIBILITY: Hardlink per ingannare gli hook archiso
+  # ARCH-COMPATIBILITY: Hardlink per ingannare gli hook archiso
   # ---------------------------------------------------------
   - name: "coa-arch-compat"
     description: "Creazione gancio di compatibilità per Archiso"
@@ -168,7 +171,7 @@ remaster:
     chroot: false
 
   # ---------------------------------------------------------
-  # 10. MASTERIZZAZIONE ISO (XORRISO)
+  # MASTERIZZAZIONE ISO (XORRISO)
   # ---------------------------------------------------------
   - name: "coa-xorriso"
     description: "Masterizzazione ISO finale"
@@ -176,20 +179,16 @@ remaster:
     run_command: "xorriso -as mkisofs -R -J -joliet-long -l -cache-inodes -V 'OA_LIVE' -isohybrid-mbr /tmp/coa/bootloaders/ISOLINUX/isohdpfx.bin -partition_offset 16 -A 'OA_LIVE' -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e EFI/BOOT/efi.img -no-emul-boot -isohybrid-gpt-basdat -o ${ISO_OUTPUT} /home/eggs/isodir"
 
   # ---------------------------------------------------------
-  # 11. PULIZIA FINALE
+  # PULIZIA FINALE
   # ---------------------------------------------------------
   - name: "coa-cleanup"
     description: "Smontaggio e pulizia"
     command: "oa_umount"
 
 # ==============================================================================
-# 01. PROFILO DI INSTALLAZIONE PER ARCH LINUX - LOGICA EVOLUTION
+# Profilo di Installazione per Arch Linux - Logica Evolution
 # ==============================================================================
 install:
-
-  # ---------------------------------------------------------
-  # 01. FINALIZZAZIONE SISTEMA
-  # ---------------------------------------------------------
   - name: "finalize"
     description: "Generazione initramfs e configurazione GRUB"
     command: |

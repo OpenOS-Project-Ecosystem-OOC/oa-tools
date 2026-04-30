@@ -18,36 +18,21 @@ pkgrel=%s
 pkgdesc="oa-tools universal Linux remastering (Manjaro edition)"
 arch=('x86_64')
 license=('GPL3')
+# Optimized Manjaro dependencies for oa-tools
 depends=(
-    'arch-install-scripts'
-    'dosfstools'
-    'efibootmgr'
-    'erofs-utils'
-    'findutils'
-    'git'
-    'grub'
-    'jq'
-    'libarchive'
-    'libisoburn'
-    'lvm2'
-    'manjaro-tools-iso'
-    'mkinitcpio-nfs-utils'
-    'mtools'
-    'nbd'
-    'nodejs'
-    'pacman-contrib'
-    'parted'
-    'polkit'
-    'procps-ng'
-    'pv'
-    'python'
-    'rsync'
-    'squashfs-tools'
-    'sshfs'
-    'wget'
-    'xdg-utils'
-    'sudo'
+    'manjaro-tools-iso'      # Hook miso per initramfs (fondamentale su Manjaro)
+    'libisoburn'             # xorriso
+    'squashfs-tools'         # mksquashfs
+    'mtools'                 # manipolazione EFI img
+    'dosfstools'             # mkfs.vfat
+    'arch-install-scripts'   # arch-chroot
+    'grub'                   # bootloader
+    'rsync'                  # copia file
+    'sudo'                   # privilegi
+    'pv'                     # progress meter
+    'git'                    # gestione wardrobe
 )
+
 conflicts=('penguins-eggs')
 backup=('etc/oa-tools.d/oa-tools.yaml')
 options=(!debug)
