@@ -73,12 +73,20 @@ remaster:
     chroot: true
 
   # ---------------------------------------------------------
-  # 06. COPIA KERNEL E INITRD PER ISO
+  # 06. COPIA KERNEL E INITRD (Fixed per Mint/Ubuntu)
   # ---------------------------------------------------------
-  - name: "coa-kernel-copy"
-    description: "Copia del Kernel e Initrd standardizzati per la ISO"
+  - name: "coa-copy-kernel"
+    description: "Copia del Kernel e Initrd direttamente da /boot"
     command: "oa_shell"
-    run_command: "cp /home/eggs/liveroot/vmlinuz /home/eggs/isodir/live/vmlinuz && cp /home/eggs/liveroot/initrd.img /home/eggs/isodir/live/initrd.img"
+    run_command: |
+      # Trova l'ultima versione del kernel e initrd in /boot
+      VMLINUZ=$(ls -v /home/eggs/liveroot/boot/vmlinuz-* | tail -n 1)
+      INITRD=$(ls -v /home/eggs/liveroot/boot/initrd.img-* | tail -n 1)
+      
+      # Esegui la copia rinominandoli per la ISO
+      cp "$VMLINUZ" /home/eggs/isodir/live/vmlinuz
+      cp "$INITRD" /home/eggs/isodir/live/initrd.img
+    chroot: false
 
   # ---------------------------------------------------------
   # 07. GENERAZIONE MENU DI BOOT (GRUB/ISOLINUX/EFI)
