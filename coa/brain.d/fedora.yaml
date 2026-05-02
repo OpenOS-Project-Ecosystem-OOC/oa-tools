@@ -68,7 +68,8 @@ remaster:
   - name: "coa-initrd"
     description: "Generazione Initramfs tramite dracut (Fedora)"
     command: "oa_shell"
-    run_command: "dracut -f --no-hostonly /boot/initramfs-fedora.img"
+    run_command: |
+      dracut -f -v --no-hostonly --add "dmsquash-live livenet" /boot/initramfs-fedora.img > /boot/dracut-build.log 2>&1
     chroot: true
 
   # ---------------------------------------------------------
@@ -137,8 +138,21 @@ remaster:
     command: "oa_shell"
     run_command: "mksquashfs /home/eggs/liveroot /home/eggs/isodir/live/filesystem.squashfs -comp zstd -Xcompression-level 3 -b 1M -processors 4 -noappend -wildcards -ef /tmp/coa/excludes.list"
 
+# ---------------------------------------------------------
+  # 09. FEDORA-COMPATIBILITY: Hardlink per ingannare dracut
   # ---------------------------------------------------------
-  # 09. MASTERIZZAZIONE ISO (XORRISO)
+  - name: "coa-fedora-compat"
+    description: "Creazione gancio di compatibilità per Fedora (LiveOS)"
+    command: "oa_shell"
+    run_command: |
+      cd /home/eggs/isodir
+      mkdir -p LiveOS
+      # Fedora cerca /LiveOS/squashfs.img per montare il sistema
+      ln -f live/filesystem.squashfs LiveOS/squashfs.img
+    chroot: false
+
+  # ---------------------------------------------------------
+  # 10. MASTERIZZAZIONE ISO (XORRISO)
   # ---------------------------------------------------------
   - name: "coa-xorriso"
     description: "Creazione della ISO finale con xorriso"
@@ -146,33 +160,45 @@ remaster:
     run_command: "xorriso -as mkisofs -iso-level 3 -R -J -joliet-long -l -cache-inodes -V 'OA_LIVE' -isohybrid-mbr /tmp/coa/bootloaders/ISOLINUX/isohdpfx.bin -partition_offset 16 -A 'OA_LIVE' -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e EFI/BOOT/efi.img -no-emul-boot -isohybrid-gpt-basdat -o ${ISO_OUTPUT} /home/eggs/isodir"
 
   # ---------------------------------------------------------
-  # 10. PULIZIA FINALE E UMOUNT
+  # 11. PULIZIA FINALE E UMOUNT
   # ---------------------------------------------------------
   - name: "coa-cleanup"
     description: "Smontaggio e pulizia finale (Smart Umount)"
     command: "oa_umount"
 
 # ==============================================================================
-# 01. PROFILO DI INSTALLAZIONE - LOGICA POST-COPY (FEDORA)
+# 01. PROFILO DI INSTALLAZIONE
 # ==============================================================================
 install:
-
   # ---------------------------------------------------------
-  # 01. FINALIZZAZIONE SISTEMA (FEDORA STYLE)
+  # 01. coa-fedora-finalize
   # ---------------------------------------------------------
   - name: "finalize"
-    description: "Generazione initramfs e configurazione GRUB"
-    command: |
-      # Rimuove user live
+    description: "Generazione initramfs e configurazione GRUB definitiva"
+command: |
+      # 1. Pulizia user live
       rm -f /etc/sudoers.d/00-live
       
-      # Rigenera Initramfs per l'hardware specifico dell'utente
-      dracut -f --kver $(uname -r)
+      # 2. DISABILITA BLS (Il tocco magico per Fedora)
+      # Questo forza grub2-mkconfig a scrivere le voci direttamente in grub.cfg
+      if [ -f /etc/default/grub ]; then
+          sed -i 's/GRUB_ENABLE_BLSCFG=true/GRUB_ENABLE_BLSCFG=false/' /etc/default/grub
+      fi
+
+      # 3. Rigenerazione Initramfs
+      dracut -f --regenerate-all
       
-      # Configurazione GRUB nativa Fedora
-      if [ -d /sys/firmware/efi ]; then
-          grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg
-      else
-          grub2-mkconfig -o /boot/grub2/grub.cfg
+      # 4. Installazione Bootloader (Legacy/BIOS)[cite: 1]
+      if [ ! -d /sys/firmware/efi ]; then
+          grub2-install --recheck /dev/sda
       fi
       
+      # 5. Generazione Configurazione GRUB
+      # Ora che BLS è false, questo scriverà i "menuentry" reali
+      grub2-mkconfig -o /boot/grub2/grub.cfg
+      
+      # 6. Supporto EFI specifico per Fedora
+      if [ -d /sys/firmware/efi ]; then
+          mkdir -p /boot/efi/EFI/fedora
+          grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg
+      fi
