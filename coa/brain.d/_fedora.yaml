@@ -1,5 +1,5 @@
 # ==============================================================================
-# 00. PROFILO DI RIMASTERIZZAZIONE PER ARCH LINUX (OA) - EVOLUTION EDITION
+# 00. PROFILO DI RIMASTERIZZAZIONE PER FEDORA (OA) - EVOLUTION EDITION
 # ==============================================================================
 
 remaster:
@@ -9,14 +9,14 @@ remaster:
   # ---------------------------------------------------------
   - name: "coa-fs-setup"
     description: "Preparazione filesystem e mount (proiezione host)"
-    action: "oa_mount_logic"
+    command: "oa_mount_logic" # Go espanderà questo in oa_mkdir, oa_cp e oa_bind
 
   # ---------------------------------------------------------
   # 02. PREPARAZIONE BOOTLOADERS E UEFI
   # ---------------------------------------------------------
   - name: "coa-bootloaders"
     description: "Copia dei bootloader e creazione immagine FAT per UEFI"
-    action: "oa_shell"
+    command: "oa_shell"
     run_command: |
       set -e
       mkdir -p /home/eggs/isodir/live
@@ -42,18 +42,19 @@ remaster:
       mcopy -i /home/eggs/isodir/EFI/BOOT/efi.img /home/eggs/isodir/boot/grub/grub.cfg ::/EFI/BOOT/grub.cfg
 
   # ---------------------------------------------------------
-  # 03. GESTIONE IDENTITÀ
+  # 03. GESTIONE IDENTITÀ UTENTE
   # ---------------------------------------------------------
   - name: "coa-identity"
     description: "Gestione nativa identità (Purge & Inject stile Yocto)"
-    action: "oa_users"
+    command: "oa_users"
+    # Nota: Go inietterà automaticamente l'oggetto "users" qui
 
   # ---------------------------------------------------------
   # 04. ENABLE SUDO USER LIVE
   # ---------------------------------------------------------
   - name: "coa-enable-live"
     description: "Abilitazione poteri sudo per user live"
-    action: "oa_shell"
+    command: "oa_shell"
     run_command: |
       mkdir -p /etc/sudoers.d
       rm -f /etc/sudoers.d/00*
@@ -62,61 +63,39 @@ remaster:
     chroot: true
 
   # ---------------------------------------------------------
-  # 05. GENERAZIONE INITRAMFS
+  # 05. GENERAZIONE INITRAMFS (FEDORA STYLE)
   # ---------------------------------------------------------
   - name: "coa-initrd"
-    description: "Generazione Initramfs dinamico tramite mkinitcpio (Arch)"
-    action: "oa_shell"
+    description: "Generazione Initramfs tramite dracut (Fedora)"
+    command: "oa_shell"
     run_command: |
-      # 1. Backup della configurazione originale
-      mv /etc/mkinitcpio.conf /etc/mkinitcpio.conf.bak
-      
-      # 2. Scrittura "al volo" della configurazione Live
-      cat << 'EOF' > /etc/mkinitcpio.conf
-      MODULES=(loop dm-snapshot btrfs)
-      HOOKS=(base udev microcode modconf kms archiso archiso_loop_mnt archiso_pxe_common archiso_pxe_nbd archiso_pxe_http archiso_pxe_nfs block filesystems keyboard keymap consolefont filesystems fsck)
-      COMPRESSION="zstd"      
-      # --- FINE CONFIGURAZIONE LIVE ---
-      EOF
-      
-      # 3. Compilazione del nuovo initramfs
-      mkinitcpio -P
-      
-      # 4. Ripristino configurazione standard per l'installazione futura
-      mv /etc/mkinitcpio.conf.bak /etc/mkinitcpio.conf
+      dracut -f -v --no-hostonly --add "dmsquash-live livenet" /boot/initramfs-fedora.img > /boot/dracut-build.log 2>&1
     chroot: true
 
   # ---------------------------------------------------------
-  # 06. COPIA KERNEL E INITRD (DINAMICA)
+  # 06. COPIA KERNEL E INITRD (STANDARDIZZAZIONE ISO)
   # ---------------------------------------------------------
-  - name: "coa-kernel-copy"
-    description: "Copia del Kernel e Initrd (auto-rilevamento Arch)"
-    action: "oa_shell"
+  - name: "coa-copy-kernel"
+    description: "Copia del Kernel e Initrd per la ISO"
+    command: "oa_shell"
     run_command: |
-      # Troviamo dinamicamente il primo kernel e il suo initramfs principale (ignorando i fallback)
-      KERNEL=$(ls /home/eggs/liveroot/boot/vmlinuz-* | head -n 1)
-      INITRD=$(ls /home/eggs/liveroot/boot/initramfs-*.img | grep -v fallback | head -n 1)
-      
-      if [ -z "$KERNEL" ] || [ -z "$INITRD" ]; then
-        echo "ERRORE CRITICO: Kernel o Initrd non trovati in /boot!" >&2
-        exit 1
-      fi
-      
-      cp "$KERNEL" /home/eggs/isodir/live/vmlinuz
-      cp "$INITRD" /home/eggs/isodir/live/initrd.img
+      # Trova l'ultimo kernel evitando versioni rescue
+      VMLINUZ=$(ls -v /home/eggs/liveroot/boot/vmlinuz-* | grep -v "rescue" | tail -n 1)
+      cp "$VMLINUZ" /home/eggs/isodir/live/vmlinuz
+      cp /home/eggs/liveroot/boot/initramfs-fedora.img /home/eggs/isodir/live/initrd.img
     chroot: false
 
   # ---------------------------------------------------------
-  # 07. GENERAZIONE MENU DI BOOT (GRUB/ISOLINUX)
+  # 07. GENERAZIONE MENU DI BOOT (FEDORA STYLE)
   # ---------------------------------------------------------
   - name: "coa-live-menus"
-    description: "Generazione configurazioni di boot (Kernel Arch style)"
-    action: "oa_shell"
+    description: "Generazione configurazioni di boot (GRUB, Isolinux, EFI)"
+    command: "oa_shell"
     chroot: false
     run_command: |
       set -e
       VOL_ID="OA_LIVE"
-      BOOT_PARAMS="archisobasedir=arch archisolabel=${VOL_ID} cow_spacesize=2G # quiet splash"
+      BOOT_PARAMS="root=live:LABEL=${VOL_ID} rd.live.image selinux=0 quiet splash"
       WORK_DIR="/home/eggs/isodir"
 
       # 1. GRUB.cfg
@@ -126,7 +105,7 @@ remaster:
       insmod all_video
       search --no-floppy --set=root --label ${VOL_ID}
 
-      menuentry "Start OA Live (Arch Linux)" {
+      menuentry "Start OA Live (Fedora)" {
           linux /live/vmlinuz ${BOOT_PARAMS}
           initrd /live/initrd.img
       }
@@ -136,17 +115,17 @@ remaster:
       cat <<EOF > ${WORK_DIR}/isolinux/isolinux.cfg
       UI vesamenu.c32
       TIMEOUT 50
-      DEFAULT arch
+      DEFAULT fedora
 
-      LABEL arch
-          MENU LABEL Start OA Live (Arch Linux)
+      LABEL fedora
+          MENU LABEL Start OA Live (Fedora)
           LINUX /live/vmlinuz
-          INITRD /live/initrd.img ${BOOT_PARAMS}
+          APPEND initrd=/live/initrd.img ${BOOT_PARAMS}
       EOF
 
       # 3. EFI Trampoline
       cat <<EOF > ${WORK_DIR}/EFI/BOOT/grub.cfg
-      search --set=root --file /live/filesystem.squashfs
+      search --set=root --label ${VOL_ID}
       set prefix=(\$root)/boot/grub
       configfile \$prefix/grub.cfg
       EOF
@@ -155,57 +134,71 @@ remaster:
   # 08. COMPRESSIONE SQUASHFS
   # ---------------------------------------------------------
   - name: "coa-squashfs"
-    description: "Compressione del sistema (ZSTD)"
-    action: "oa_shell"
+    description: "Compressione del sistema (SquashFS zstd)"
+    command: "oa_shell"
     run_command: "mksquashfs /home/eggs/liveroot /home/eggs/isodir/live/filesystem.squashfs -comp zstd -Xcompression-level 3 -b 1M -processors 4 -noappend -wildcards -ef /tmp/coa/excludes.list"
 
+# ---------------------------------------------------------
+  # 09. FEDORA-COMPATIBILITY: Hardlink per ingannare dracut
   # ---------------------------------------------------------
-  # 09. ARCH-COMPATIBILITY: Hardlink per ingannare gli hook archiso
-  # ---------------------------------------------------------
-  - name: "coa-arch-compat"
-    description: "Creazione gancio di compatibilità per Archiso"
-    action: "oa_shell"
+  - name: "coa-fedora-compat"
+    description: "Creazione gancio di compatibilità per Fedora (LiveOS)"
+    command: "oa_shell"
     run_command: |
       cd /home/eggs/isodir
-      mkdir -p arch/x86_64
-      ln -f live/filesystem.squashfs arch/x86_64/airootfs.sfs
+      mkdir -p LiveOS
+      # Fedora cerca /LiveOS/squashfs.img per montare il sistema
+      ln -f live/filesystem.squashfs LiveOS/squashfs.img
     chroot: false
 
   # ---------------------------------------------------------
   # 10. MASTERIZZAZIONE ISO (XORRISO)
   # ---------------------------------------------------------
   - name: "coa-xorriso"
-    description: "Masterizzazione ISO finale"
-    action: "oa_shell"
+    description: "Creazione della ISO finale con xorriso"
+    command: "oa_shell"
     run_command: "xorriso -as mkisofs -iso-level 3 -R -J -joliet-long -l -cache-inodes -V 'OA_LIVE' -isohybrid-mbr /tmp/coa/bootloaders/ISOLINUX/isohdpfx.bin -partition_offset 16 -A 'OA_LIVE' -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e EFI/BOOT/efi.img -no-emul-boot -isohybrid-gpt-basdat -o ${ISO_OUTPUT} /home/eggs/isodir"
 
   # ---------------------------------------------------------
-  # 11. PULIZIA FINALE
+  # 11. PULIZIA FINALE E UMOUNT
   # ---------------------------------------------------------
   - name: "coa-cleanup"
-    description: "Smontaggio e pulizia"
-    action: "oa_umount"
+    description: "Smontaggio e pulizia finale (Smart Umount)"
+    command: "oa_umount"
 
 # ==============================================================================
-# 01. PROFILO DI INSTALLAZIONE PER ARCH LINUX - LOGICA EVOLUTION
+# 01. PROFILO DI INSTALLAZIONE
 # ==============================================================================
 install:
-
   # ---------------------------------------------------------
-  # 01. FINALIZZAZIONE SISTEMA
+  # 01. coa-fedora-finalize
   # ---------------------------------------------------------
   - name: "finalize"
-    description: "Generazione initramfs e configurazione GRUB"
-    action: "shell"        # Azione diretta senza wrapper
-    run_command: |         # Lo script specifico della distro
-      # rimuove user live
+    description: "Generazione initramfs e configurazione GRUB definitiva"
+command: |
+      # 1. Pulizia user live
       rm -f /etc/sudoers.d/00-live
+      
+      # 2. DISABILITA BLS (Il tocco magico per Fedora)
+      # Questo forza grub2-mkconfig a scrivere le voci direttamente in grub.cfg
+      if [ -f /etc/default/grub ]; then
+          sed -i 's/GRUB_ENABLE_BLSCFG=true/GRUB_ENABLE_BLSCFG=false/' /etc/default/grub
+      fi
 
-      # Rigenera le immagini initramfs per tutti i kernel installati
-      mkinitcpio -P
+      # 3. Rigenerazione Initramfs
+      dracut -f --regenerate-all
       
-      # Installa il bootloader (coa sostituirà /dev/sda con il disco reale)
-      grub-install --target=i386-pc --recheck /dev/sda
+      # 4. Installazione Bootloader (Legacy/BIOS)[cite: 1]
+      if [ ! -d /sys/firmware/efi ]; then
+          grub2-install --recheck /dev/sda
+      fi
       
-      # Genera il file di configurazione di GRUB
-      grub-mkconfig -o /boot/grub/grub.cfg
+      # 5. Generazione Configurazione GRUB
+      # Ora che BLS è false, questo scriverà i "menuentry" reali
+      grub2-mkconfig -o /boot/grub2/grub.cfg
+      
+      # 6. Supporto EFI specifico per Fedora
+      if [ -d /sys/firmware/efi ]; then
+          mkdir -p /boot/efi/EFI/fedora
+          grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg
+      fi

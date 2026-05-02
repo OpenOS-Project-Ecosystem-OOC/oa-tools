@@ -20,7 +20,7 @@ func PrepareOABootloader(profile *pilot.Profile) error {
 	worker.WriteString("TARGET_DISK=$(grub-probe -t disk / 2>/dev/null || echo \"/dev/sda\")\n\n")
 
 	for _, step := range profile.Install {
-		if step.Command == "calamares" {
+		if step.Action == "calamares" {
 			continue
 		}
 		// Sostituzione universale del disco
