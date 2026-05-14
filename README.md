@@ -90,3 +90,8 @@ The article [eggs-bananas](https://penguins-eggs.net/blog/eggs-bananas) philosop
 
 ---
 *Created with passion by Piero Proietti.*
+
+## Origins
+
+oa-tools is the next-generation evolution of:
+- [pieroproietti/penguins-eggs](https://github.com/pieroproietti/penguins-eggs) — the original Linux remastering tool this project supersedes
