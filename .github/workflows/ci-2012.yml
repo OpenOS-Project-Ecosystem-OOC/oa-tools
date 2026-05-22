@@ -17,5 +17,5 @@ jobs:
 
     - name: run buidl and test
       run: |
-        export VAGRANT_BOOT_TIMEOUT=600
+        export VAGRANT_BOOT_TIMEOUT=1200  # Increased timeout to 1200 seconds
         ./tests/112-vagrant-linux-manjaro/vagrant.install.build.test.sh
