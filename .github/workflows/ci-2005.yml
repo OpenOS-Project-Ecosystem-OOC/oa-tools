@@ -17,10 +17,14 @@ jobs:
 
     - name: Setup Brain Profile
       run: |
-        # Assuming the Brain Profile configuration is stored in a specific file
         echo "Setting up Brain Profile configuration..."
         mkdir -p ~/.config/coa
         echo "brain_profile_configuration_content" > ~/.config/coa/brain_profile.yaml
+        # Ensure the Brain Profile is correctly set up before running tests
+        if [ ! -f ~/.config/coa/brain_profile.yaml ]; then
+          echo "Brain Profile configuration file not found!"
+          exit 1
+        fi
 
     - name: run buidl and test
       run: |
