@@ -26,6 +26,10 @@ jobs:
           exit 1
         fi
 
-    - name: run buidl and test
+    - name: run build and test
       run: |
+        if [ ! -f ~/.config/coa/brain_profile.yaml ]; then
+          echo "Brain Profile configuration file not found before running tests!"
+          exit 1
+        fi
         ./tests/105-vagrant-arch-linux/vagrant.install.build.test.sh
