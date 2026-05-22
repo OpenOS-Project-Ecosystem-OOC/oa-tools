@@ -15,7 +15,13 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
+    - name: Setup Brain Profile
+      run: |
+        # Assuming the Brain Profile configuration is stored in a specific file
+        echo "Setting up Brain Profile configuration..."
+        mkdir -p ~/.config/coa
+        echo "brain_profile_configuration_content" > ~/.config/coa/brain_profile.yaml
+
     - name: run buidl and test
       run: |
         ./tests/105-vagrant-arch-linux/vagrant.install.build.test.sh
-
